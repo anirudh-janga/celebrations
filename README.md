@@ -1,0 +1,26 @@
+# Celebrations
+
+Interactive festival greetings to send to friends and family. Each festival gets its own folder with a single, self-contained page.
+
+| Festival | Page | Notes |
+| --- | --- | --- |
+| Diwali 2026 | [`diwali-2026/`](diwali-2026/index.html) | three.js sunset-to-night intro over an Indian city, 12 classic crackers to burst, a 60-second Roshni round, and a Diwali 2026 almanac with sources. User stories: [`docs/diwali-2026/USER_STORIES.md`](docs/diwali-2026/USER_STORIES.md). |
+
+## Personal greeting
+
+Add `#from-YourName` to a page link and the greeting will say it came from you, for example `.../diwali-2026/#from-Anirudh`. Only letters, numbers and hyphens are read; hyphens become spaces.
+
+## Run locally
+
+No build step. Serve the folder and open it:
+
+```sh
+python3 -m http.server 8000
+# then open http://localhost:8000/diwali-2026/
+```
+
+three.js r128 loads from cdnjs; fonts load from Google Fonts. Sound is synthesized with the Web Audio API, so there are no asset files.
+
+## Publish with GitHub Pages
+
+Repository **Settings → Pages → Build and deployment**: set the source to "Deploy from a branch", pick the branch and `/ (root)`. The site will be at `https://<user>.github.io/celebrations/`.

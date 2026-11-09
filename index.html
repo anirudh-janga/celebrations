@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Celebrations</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Hind:wght@400;600&display=swap">
+<style>
+/* Layout: a short festival calendar, one row per celebration page. */
+:root {
+  --night: #0b0a1f; --panel: #15123a; --marigold: #ffb627; --diya: #ffdc8f; --ivory: #fbf1de; --muted: #b8aed3; --line: rgba(255, 220, 143, 0.18);
+  --font-display: "Rozha One", Georgia, serif; --font-body: "Hind", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 120%, #3a1530 0%, var(--night) 60%); color: var(--ivory); font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-block: 56px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 640px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(40px, 9vw, 64px); line-height: 1; margin: 0; }
+h1 span { color: var(--marigold); }
+p { margin: 0; color: var(--muted); max-width: 52ch; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+a.fest { display: grid; grid-template-columns: 76px 1fr auto; gap: 16px; align-items: center; padding: 16px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); color: inherit; text-decoration: none; transition: border-color .2s, transform .2s; }
+a.fest:hover, a.fest:focus-visible { border-color: var(--marigold); transform: translateY(-2px); outline: none; }
+.date { text-align: center; line-height: 1.05; }
+.date b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--marigold); }
+.date span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.what { min-width: 0; display: grid; gap: 2px; }
+.what strong { font-family: var(--font-display); font-weight: 400; font-size: 22px; color: var(--diya); }
+.what small { color: var(--muted); }
+.go { color: var(--marigold); font-weight: 600; white-space: nowrap; }
+.soon { opacity: .55; }
+@media (max-width: 460px) { a.fest { grid-template-columns: 60px 1fr; } .go { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Celebrations<span>.</span></h1>
+  <p>Festival greetings you can open, play with and send to family. One page for each festival.</p>
+  <ul>
+    <li><a class="fest" href="diwali-2026/"><div class="date"><b>8</b><span>Nov 2026</span></div><div class="what"><strong>Diwali 2026</strong><small>Watch the city light up, then burst a box of crackers on the street.</small></div><span class="go">Open →</span></a></li>
+  </ul>
+  <p class="soon">More festivals coming.</p>
+</main>
+</body>
+</html>
