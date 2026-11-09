@@ -4,7 +4,7 @@ Interactive festival greetings to send to friends and family. Each festival gets
 
 | Festival | Page | Notes |
 | --- | --- | --- |
-| Diwali 2026 | [`diwali-2026/`](diwali-2026/index.html) | three.js sunset-to-night intro over an Indian city, a Telugu greeting, 12 classic crackers (tarajuvva, chichubuddi, bhoochakram, kakarapuvvottulu…) to burst, a 60-second Roshni round, and a Diwali 2026 almanac with sources. User stories: [`docs/diwali-2026/USER_STORIES.md`](docs/diwali-2026/USER_STORIES.md). |
+| Diwali 2026 | [`diwali-2026/`](diwali-2026/index.html) | three.js sunset-to-night intro over an Indian city, 12 fireworks to light, people cheering on the street, and a different sky each visit, a 60-second Roshni round, and a Diwali 2026 almanac with sources. User stories: [`docs/diwali-2026/USER_STORIES.md`](docs/diwali-2026/USER_STORIES.md). |
 
 ## Devices
 

@@ -24,12 +24,24 @@ As a guest, I want dusk to deepen into night over about 12 seconds, so that the 
 As a guest, I want thousands of diyas to light up across rooftops, balconies and the street in a ripple, so that the city visibly "wakes up" for Diwali.
 - Acceptance: diyas light in a wave from the centre outward; each flame flickers on its own; windows warm up; akash kandils (paper lanterns) and string lights glow on buildings.
 
+**A3b. A different evening every visit**
+As a guest who opens the link twice, I want the sky and city to change, so that it feels alive.
+- Acceptance: each visit picks one of four sunset palettes (saffron, rose, gold, ember), a sun position, clear or cloudy streaks, and a new layout of buildings and landmarks; a flock of birds crosses the sunset.
+
+**A3c. People in the scene**
+As a guest, I want to see people celebrating, so that the street feels like a real Diwali night.
+- Acceptance: stick-figure families on the footpaths and rooftops, some waving, some walking, kids with sparklers; they cheer and jump when fireworks go off nearby.
+
+**A3d. No flicker**
+As a guest, I want the opening shot to be steady, so that it looks polished.
+- Acceptance: no shimmering ground or buildings (depth precision, offsets, mipmapped textures, antialiasing on every device); no blurred overlays over the 3D view; no hard-blinking lights.
+
 **A4. The greeting**
-As a guest, I want a Telugu "దీపావళి శుభాకాంక్షలు" (Deepavali Shubhakankshalu) title with "Happy Deepavali 2026" beneath it to appear once the city is lit, so that I know what this page is for.
+As a guest, I want a big "Happy Diwali 2026" title to appear once the city is lit, so that I know what this page is for.
 - Acceptance: the title appears after the diyas; the call to action ("Go down to the street") appears below it; the intro can be skipped at any time.
 
 **A5. Personal greeting from the host**
-As a host, I want to add my name to the link (for example `#from-Anirudh`), so that guests see "Anirudh wishes you a happy Deepavali".
+As a host, I want to add my name to the link (for example `#from-Anirudh`), so that guests see "Anirudh wishes you a happy Diwali".
 - Acceptance: the name is read from the URL hash, hyphens become spaces, only letters/digits/hyphens are used, nothing is sent anywhere. Without a hash a general greeting shows.
 
 ---
@@ -42,7 +54,7 @@ As a guest, I want the camera to swoop from the rooftop view down to a lane line
 
 **B2. Pick a cracker from the box**
 As a player, I want a "cracker box" tray with at least 10 Indian firecrackers, each with a picture and name, so that I can choose what to burst.
-- Acceptance: tray scrolls sideways on a phone; each item shows an English or Telugu name, its name in Telugu script, and a short description; the selected item is clearly highlighted.
+- Acceptance: tray scrolls sideways on a phone; each item shows a plain English name and a short description; the selected item is clearly highlighted.
 
 **B3. Place and light it**
 As a player, I want to tap a spot on the street to place the cracker and see its fuse sparkle before it goes off, so that it feels like lighting it with an agarbatti.
@@ -50,16 +62,16 @@ As a player, I want to tap a spot on the street to place the cracker and see its
 
 **B4. Each cracker behaves like the real thing**
 As a player, I want every cracker to have its own effect, so that each one triggers a different memory.
-- Tarajuvva (rocket): launched from a glass bottle, whistles up, bursts into a peony.
-- Chichubuddi (flower pot): a tall golden fountain that crackles.
-- Bhoochakram (ground spinner): spins on the ground throwing a ring of sparks.
-- Kakarapuvvottulu (sparkler): I can drag my finger to write in the air with sparks.
-- Lakshmi bomb / sutli bomb: flash, shockwave ring, screen shake and a big boom.
-- 1000-wala cracker string: a chain of rapid pops crackling down the street.
+- Rocket: launched from a glass bottle, whistles up, bursts into a peony.
+- Flower pot: a tall golden fountain that crackles.
+- Ground spinner: spins on the ground throwing a ring of sparks.
+- Sparkler: I can drag my finger to write in the air with sparks.
+- Bomb: flash, shockwave ring, screen shake and a big boom.
+- Cracker chain: a chain of rapid pops crackling down the street.
 - Sky shot (12-shot): a series of colourful shells, one after another.
 - Bhoochakra/pencil: thin coloured sparks that change colour.
-- Paamu billalu (snake tablets): a black ash snake that grows and wriggles with smoke.
-- Colour matches (rangula aggipullalu): little coloured flames.
+- Snake tablet: a black ash snake that grows and wriggles with smoke.
+- Colour matches: little coloured flames.
 - Hydrogen bomb / aloo bomb: a heavier bang with smoke.
 - Acceptance: each effect is visibly different and lasts 1–6 seconds.
 
