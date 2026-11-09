@@ -138,11 +138,11 @@ body.kb .cracker kbd { display: block; }
 .cracker .cd { position: absolute; inset: auto 0 0 0; height: calc(var(--cd, 0) * 100%); background: rgba(11, 10, 31, .72); pointer-events: none; }
 
 /* ---------- toast + floating score ---------- */
-#toast { pointer-events: none; position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 150px);
+#toast { pointer-events: none; position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(12px, env(safe-area-inset-top, 0px)) + 60px); /* up top, so the street stays clear */
   width: min(520px, calc(100% - 32px)); padding: 12px 16px; border-radius: 14px; background: var(--panel-glass); border: 1px solid var(--line);
   font-size: 14px; display: grid; gap: 2px; transition: opacity .35s, transform .35s; }
 #toast .t-k { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--marigold); font-weight: 700; }
-#toast.hide { opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }
+#toast.hide { opacity: 0; transform: translate(-50%, -8px); pointer-events: none; }
 .float { position: fixed; pointer-events: none; font-family: var(--font-display); font-size: 22px; color: var(--diya); text-shadow: 0 0 12px rgba(255,140,0,.9);
   transform: translate(-50%, -50%); animation: floatUp 1.2s ease-out forwards; white-space: nowrap; }
 .float small { font-family: var(--font-body); font-size: 12px; color: var(--ivory); display: block; text-align: center; }
@@ -203,13 +203,12 @@ body.kb .cracker kbd { display: block; }
 @media (max-width: 520px) {
   .pill-btn .long { display: none; }
   .timer { font-size: 22px; }
-  #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 138px); font-size: 13px; }
+  #toast { font-size: 13px; }
   .cracker { width: 92px; } .cracker .nm { font-size: 12.5px; }
 }
 /* tablets and desktops: roomier tray */
 @media (min-width: 900px) and (min-height: 640px) {
   .cracker { width: 108px; } .cracker svg { width: 48px; height: 48px; } .cracker .nm { font-size: 13.5px; }
-  #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 186px); }
 }
 /* phones held sideways: short screens need a compact tray and cards that fit */
 @media (max-height: 500px) {
@@ -219,7 +218,7 @@ body.kb .cracker kbd { display: block; }
   #hint { font-size: 12px; }
   #hud { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
   .icon-btn { width: 36px; height: 36px; } .pill-btn { height: 36px; } .timer { font-size: 20px; }
-  #toast { bottom: auto; top: calc(max(8px, env(safe-area-inset-top, 0px)) + 50px); width: min(440px, calc(100% - 32px)); padding: 8px 12px; font-size: 13px; }
+  #toast { top: calc(max(8px, env(safe-area-inset-top, 0px)) + 50px); width: min(440px, calc(100% - 32px)); padding: 8px 12px; font-size: 13px; }
   .center-card { gap: 8px; padding: 14px 18px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
   .center-card h2 { font-size: 24px; }
   #titleCard .deva { font-size: min(11vw, 17vh); } #titleCard .te-line { font-size: min(5vw, 8vh); } #titleCard .latin { font-size: 22px; } #titleCard p { font-size: 15px; }
@@ -666,7 +665,6 @@ function place(mesh, x, z, w, h, d, color) {
 function addTank(x, y, z) { if (tanks.count >= 220) return; _m4.compose(_p.set(x, y, z), _q.identity(), _s.set(1, 1, 1)); tanks.setMatrixAt(tanks.count++, _m4); }
 
 const lanterns = [];
-const houseSlots = []; // rooftops where people can stand
 const lanternGeo = new THREE.OctahedronGeometry(0.3, 0); lanternGeo.scale(1, 1.3, 1);
 const curtainEvery = isMobile ? 1.6 : 1.1;
 // street houses
@@ -676,7 +674,6 @@ for (const s of [-1, 1]) {
     const w = rand(5.5, 8), floors = 2 + ((Math.random() * 3) | 0), h = floors * 3.2 + 0.7, d = rand(8, 12);
     const zc = z - w / 2;
     place(houses, s * (STREET_HALF + d / 2), zc, d, h, w - 0.25, pick(PASTELS)); // x is depth, z is frontage
-    houseSlots.push({ s, h, zc, w });
     // roof parapet diyas facing the street
     for (let q = zc - w / 2 + 0.35; q <= zc + w / 2 - 0.35; q += 0.6) addLamp(s * (STREET_HALF + 0.15), h + 0.14, q, 0.6, DIYA, 0);
     for (let f = 1; f < floors; f++) if (Math.random() < 0.65) {
@@ -799,86 +796,6 @@ const beacon = (() => { // telecom mast with a red light
   pts.forEach((p, i) => { _m4.compose(_p.set(p[0], p[1], p[2]), _q.setFromAxisAngle(new V3(0, 1, 0), Math.random() * 6), _s.set(1, 1, 1)); mesh.setMatrixAt(i, _m4); addLamp(p[0], p[1] + 0.32, p[2], 0.45, DIYA, 0); });
   mesh.frustumCulled = false; city.add(mesh);
 })();
-
-/* ---------- people: stick figures on the street, in the square and on the rooftops ---------- */
-const people = [];
-const PPL = (() => {
-  const line = new THREE.MeshLambertMaterial({ color: 0x1c1416 });
-  const skin = new THREE.MeshLambertMaterial({ color: 0x7a4a34 });
-  const clothes = [0xe8345a, 0xffb627, 0x27b8a8, 0x7b2cbf, 0xf3efe6, 0xff7a00, 0x2f6fde, 0xd94f9c, 0x3fae5a].map((c) => new THREE.MeshLambertMaterial({ color: c }));
-  const limb = new THREE.CylinderGeometry(0.06, 0.06, 1, 6); limb.translate(0, -0.5, 0); // pivots at its top end
-  const head = new THREE.SphereGeometry(0.16, 12, 10);
-  const top = new THREE.ConeGeometry(0.27, 0.66, 10, 1, true);
-  return { line, skin, clothes, limb, head, top };
-})();
-function makePerson(x, y, z, kind, size) {
-  const g = new THREE.Group(); g.position.set(x, y, z); g.scale.setScalar(size);
-  const L = (len, px, py, rz) => { const m = new THREE.Mesh(PPL.limb, PPL.line); m.scale.y = len; m.position.set(px, py, 0); m.rotation.z = rz; g.add(m); return m; };
-  const legL = L(0.9, -0.07, 0.9, 0.08), legR = L(0.9, 0.07, 0.9, -0.08);
-  L(0.55, 0, 1.45, 0); // spine
-  const shirt = new THREE.Mesh(PPL.top, pick(PPL.clothes)); shirt.position.y = 1.12; g.add(shirt);
-  const armL = L(0.62, -0.08, 1.4, 0.28), armR = L(0.62, 0.08, 1.4, -0.28);
-  const headM = new THREE.Mesh(PPL.head, PPL.skin); headM.position.y = 1.64; g.add(headM);
-  // face the viewer, roughly
-  g.rotation.y = Math.atan2(-x * 0.6, 30 - z) * 0.6 + rand(-0.25, 0.25);
-  city.add(g);
-  const person = { g, legL, legR, armL, armR, headM, kind, y, ph: Math.random() * 6.28, cheer: 0, cheerDelay: 0, z0: z, dir: Math.random() < 0.5 ? 1 : -1, speed: rand(0.7, 1.2) };
-  people.push(person); return person;
-}
-(() => {
-  const budget = { phone: 22, tablet: 34, desktop: 38 }[TIER];
-  const kinds = ['watch', 'watch', 'wave', 'sparkler', 'walk', 'watch', 'wave', 'sparkler'];
-  // the square at the start of the lane: families with kids
-  // a family on each footpath near the front, in clear view
-  for (const sd of [-1, 1]) {
-    const bx = sd * 7.3, bz = rand(-9, -2);
-    makePerson(bx, 0.18, bz, pick(['watch', 'wave']), rand(1.1, 1.2));
-    makePerson(bx, 0.18, bz - 1.1, 'watch', rand(1.02, 1.12));
-    makePerson(bx - sd * 0.4, 0.18, bz + 1, Math.random() < 0.6 ? 'sparkler' : 'wave', rand(0.66, 0.78));
-  }
-  // footpaths on both sides of the lane
-  let n = people.length;
-  while (n < budget * 0.6) {
-    const sd = Math.random() < 0.5 ? -1 : 1, kid = Math.random() < 0.35;
-    makePerson(sd * rand(7.1, 7.6), 0.18, rand(-46, 4), pick(kinds), kid ? rand(0.66, 0.78) : rand(1.05, 1.2)); n++;
-  }
-  // rooftops: neighbours watching from their terraces
-  const roofs = houseSlots.filter(() => Math.random() < 0.5);
-  for (const r of roofs) {
-    if (n >= budget) break;
-    const k = 1 + ((Math.random() * 2) | 0);
-    for (let i = 0; i < k && n < budget; i++, n++) makePerson(r.s * rand(8.7, 9.6), r.h, r.zc + rand(-r.w / 3, r.w / 3), pick(['watch', 'wave', 'wave', 'sparkler']), Math.random() < 0.3 ? 0.72 : 1.15);
-  }
-})();
-const _hand = new V3();
-function cheer(p, radius) {
-  for (const q of people) { const dx = q.g.position.x - p.x, dz = q.g.position.z - p.z; if (dx * dx + dz * dz < radius * radius && Math.random() < 0.8) { q.cheerDelay = rand(0.05, 0.4); q.cheer = rand(1.2, 1.8); } }
-}
-function updatePeople(dt) {
-  const t = time;
-  for (const q of people) {
-    if (q.cheerDelay > 0) q.cheerDelay -= dt;
-    else if (q.cheer > 0) q.cheer -= dt;
-    const cheering = q.cheer > 0 && q.cheerDelay <= 0;
-    let aL = 0.28, aR = -0.28, lL = 0.08, lR = -0.08, bob = 0;
-    if (q.kind === 'walk' && !cheering) {
-      q.g.position.z += q.dir * q.speed * dt; if (Math.abs(q.g.position.z - q.z0) > 6) q.dir *= -1;
-      const sw = Math.sin(t * q.speed * 5 + q.ph); lL = sw * 0.45; lR = -sw * 0.45; aL = 0.2 - sw * 0.35; aR = -0.2 - sw * 0.35; bob = Math.abs(sw) * 0.04;
-      q.g.rotation.y = q.dir > 0 ? 0.25 : Math.PI - 0.25;
-    } else if (q.kind === 'wave') { aR = -2.5 + Math.sin(t * 6 + q.ph) * 0.45; }
-    else if (q.kind === 'sparkler') {
-      aR = -1.5 + Math.sin(t * 4 + q.ph) * 0.7;
-      if (night.lit > 0.95 && Math.random() < 0.85 * Q.fx) {
-        q.armR.updateWorldMatrix(true, false); _hand.set(0, -1, 0).applyMatrix4(q.armR.matrixWorld);
-        for (let k = 0; k < 2; k++) { randDir(_d); const sp = rand(0.8, 2.4); P.spawn(_hand.x, _hand.y, _hand.z, _d.x * sp, _d.y * sp, _d.z * sp, 1, 0.9, 0.7, 0.05, rand(0.12, 0.3), 2.5, 2, 0); }
-      }
-    } else { aL = 0.22 + Math.sin(t * 0.8 + q.ph) * 0.05; aR = -aL; }
-    if (cheering) { aL = 2.6 + Math.sin(t * 9 + q.ph) * 0.25; aR = -2.6 - Math.sin(t * 9 + q.ph) * 0.25; bob = Math.abs(Math.sin(t * 9 + q.ph)) * 0.22; }
-    q.armL.rotation.z = aL; q.armR.rotation.z = aR; q.legL.rotation.z = lL * 0.25 + 0.08; q.legR.rotation.z = lR * 0.25 - 0.08;
-    q.legL.rotation.x = lL; q.legR.rotation.x = lR;
-    q.g.position.y = q.y + bob; q.headM.rotation.y = Math.sin(t * 0.5 + q.ph) * 0.4;
-  }
-}
 
 /* ---------- birds heading home at sunset ---------- */
 const birds = (() => {
@@ -1135,7 +1052,7 @@ function burst(p, pattern = pick(PATTERNS), colorName = pick(SHELL_COLORS), scal
   const S = scale * (far ? 2.6 : 1), sz = (far ? 0.85 : 0.24) * (0.8 + scale * 0.2), cnt = (far ? 0.45 : 1) * Q.fx;
   const sp = (v) => v * S;
   const n = (k) => Math.max(12, (k * cnt) | 0);
-  if (!far) { glowAt(p, c, 6 * scale); cheer(p, 70); }
+  if (!far) glowAt(p, c, 6 * scale);
   switch (pattern) {
     case 'ring': {
       const ax = randDir(new V3()).multiplyScalar(0.4).add(new V3(0, 0, 1)).normalize(), u = new V3().crossVectors(ax, new V3(0, 1, 0)).normalize(), w = new V3().crossVectors(ax, u);
@@ -1292,7 +1209,7 @@ const FX = {
     const g = spawnModel('rocket', p); const r = g.userData.rocket;
     fuse(new V3(p.x, p.y + 0.62, p.z), 0.9, () => {
       const wp = new V3(); r.getWorldPosition(wp); g.remove(r); scene.add(r); r.position.copy(wp); r.rotation.set(0, 0, 0);
-      const apex = rand(1.25, 1.45), v = new V3(rand(-0.8, 0.8), 14, (rand(-36, -26) - p.z) / apex), up = new V3(0, 1, 0), dir = new V3();
+      const apex = rand(1.25, 1.45), v = new V3(rand(-0.8, 0.8), 13, (rand(-50, -40) - p.z) / apex), up = new V3(0, 1, 0), dir = new V3();
       sfx.whistle(apex); sfx.thump();
       during(apex, (dt) => {
         v.y += 5 * dt; v.x += Math.sin(performance.now() * 0.02) * 0.4 * dt; r.position.addScaledVector(v, dt); r.quaternion.setFromUnitVectors(up, dir.copy(v).normalize());
@@ -1367,7 +1284,7 @@ const FX = {
       seq.forEach((pat, i) => after(i * 0.42, () => {
         for (let k = 0; k < 18; k++) P.spawn(mouth.x, mouth.y, mouth.z, rand(-1.5, 1.5), rand(2, 6), rand(-1.5, 1.5), 1, 0.8, 0.4, 0.1, rand(0.2, 0.4), 2, 6, F_EMBER);
         glowAt(mouth, [1, 0.7, 0.3], 3); Smoke.puff(mouth.x, 1, mouth.z, 1, 0.3, 3);
-        const tt = rand(1.05, 1.3); shell(mouth, { vy: rand(20, 24), vx: rand(-4, 4), vz: (rand(-38, -26) - mouth.z) / tt, time: tt, pattern: pat, color: pick(SHELL_COLORS), scale: i === 11 ? 1.3 : 0.85 });
+        const tt = rand(1.05, 1.3); shell(mouth, { vy: rand(20, 24), vx: rand(-4, 4), vz: (rand(-52, -40) - mouth.z) / tt, time: tt, pattern: pat, color: pick(SHELL_COLORS), scale: i === 11 ? 1.3 : 0.85 });
       }));
       removeLater(g, 12 * 0.42 + 3);
     });
@@ -1419,7 +1336,7 @@ const FX = {
   },
 };
 function explode(p, power, paper) {
-  const c = new V3(p.x, 0.35, p.z); cheer(c, 40);
+  const c = new V3(p.x, 0.35, p.z);
   for (let k = 0, m = 200 * Q.fx * power; k < m; k++) { randDir(_d); _d.y = Math.abs(_d.y) * 0.7; const s = rand(10, 20) * power; P.spawn(c.x, c.y, c.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.93, 0.75, 0.13, rand(0.15, 0.4), 4, 2, 0); }
   for (let k = 0; k < 60 * power; k++) P.spawn(c.x, c.y, c.z, rand(-6, 6), rand(2, 9), rand(-6, 6), paper[0], paper[1], paper[2], 0.08, rand(1.8, 3), 2.4, 3.5, 0);
   for (let k = 0; k < 14 * power; k++) Smoke.puff(c.x + rand(-1, 1) * power, c.y + rand(0, 1.2) * power, c.z + rand(-1, 1) * power, 1.6 * power, 0.45, 4.5);
@@ -1479,12 +1396,12 @@ const night = { n: 0, lit: 0, win: 0 };
 const POSE = {
   pre: { pos: new V3(0, 44, 100), look: new V3(0, 18, -160) },
   intro: { pos: new V3(0, 30, 64), look: new V3(0, 13, -140) },
-  street: { pos: new V3(0, 6.5, 24), look: new V3(0, 6.5, -25) },
+  street: { pos: new V3(0, 4.3, 15), look: new V3(0, 2.6, -20), fov: 50 },
 };
 const camPos = POSE.pre.pos.clone(), camLook = POSE.pre.look.clone();
 function streetPose() { // pull back a little on narrow portrait screens
-  const a = innerWidth / innerHeight; const back = a < 0.8 ? (0.8 - a) * 14 : 0;
-  return { pos: new V3(0, 6.5 + back * 0.25, 24 + back), look: POSE.street.look };
+  const a = innerWidth / innerHeight; const back = a < 0.8 ? (0.8 - a) * 12 : 0;
+  return { pos: new V3(0, 4.3 + back * 0.2, 15 + back), look: POSE.street.look };
 }
 
 /* ---------- UI wiring ---------- */
@@ -1616,11 +1533,11 @@ function grandFinale(after_) {
   toast('Grand finale', hostName ? `${hostName} and the whole street say Happy Diwali! దీపావళి శుభాకాంక్షలు!` : 'The whole street joins in. Happy Diwali! దీపావళి శుభాకాంక్షలు!');
   const N = Math.round(50 * Q.fx);
   for (let i = 0; i < N; i++) after(i * 0.16 + rand(0, 0.1), () => {
-    const from = new V3(rand(-16, 16), 0.5, rand(-48, -30));
+    const from = new V3(rand(-14, 14), 0.5, rand(-62, -44));
     shell(from, { vy: rand(22, 28), vx: rand(-3, 3), vz: rand(-3, 0), time: rand(1.1, 1.45), scale: rand(0.9, 1.25), sound: i % 2 === 0 });
   });
-  for (let i = 0; i < 6; i++) after(N * 0.16 + 0.6 + i * 0.05, () => { const p = new V3(-20 + i * 8, rand(26, 32), -42); burst(p, 'willow', 'gold', 1.4); if (i % 2 === 0) sfx.boom(1, 0.05); });
-  after(N * 0.16 + 0.8, () => { const p = new V3(0, 22, -34); burst(p, 'heart', 'ruby', 1.4); });
+  for (let i = 0; i < 6; i++) after(N * 0.16 + 0.6 + i * 0.05, () => { const p = new V3(-20 + i * 8, rand(24, 30), -56); burst(p, 'willow', 'gold', 1.4); if (i % 2 === 0) sfx.boom(1, 0.05); });
+  after(N * 0.16 + 0.8, () => { const p = new V3(0, 21, -46); burst(p, 'heart', 'ruby', 1.4); });
   after(N * 0.16 + 4.2, () => { finaleRunning = false; after_(); });
 }
 
@@ -1641,8 +1558,8 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), groundPlane 
 function streetPoint(sx, sy) {
   ndc.set((sx / innerWidth) * 2 - 1, -(sy / innerHeight) * 2 + 1); raycaster.setFromCamera(ndc, camera);
   const v = new V3(); const hit = raycaster.ray.intersectPlane(groundPlane, v);
-  if (!hit || v.z < -26) { raycaster.ray.intersectPlane(backPlane, v); v.set(v.x || 0, 0, -18); }
-  v.x = clamp(v.x, -6.2, 6.2); v.z = clamp(v.z, -28, 13); v.y = 0; return v;
+  if (!hit || v.z < -24) { raycaster.ray.intersectPlane(backPlane, v); v.set(v.x || 0, 0, -18); }
+  v.x = clamp(v.x, -6, 6); v.z = clamp(v.z, -24, 5); v.y = 0; return v;
 }
 // a marker on the street showing where a click will land (mouse and trackpad only)
 const ghost = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffb627, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -1694,7 +1611,7 @@ addEventListener('keydown', (e) => {
   if (k >= 0 && (state === 'play' || state === 'street')) { sfx.init(); select(CRACKERS[k].id); tray.querySelector(`[data-id="${CRACKERS[k].id}"]`).scrollIntoView({ inline: 'nearest', block: 'nearest' }); e.preventDefault(); return; }
   if ((e.key === ' ' || (e.key === 'Enter' && !(e.target.closest && e.target.closest('button')))) && state === 'play' && !(e.target.closest && e.target.closest('button:not(.cracker), #drawer'))) {
     sfx.init(); e.preventDefault();
-    const p = hoverPoint ? hoverPoint.clone() : new V3(rand(-5.5, 5.5), 0, rand(-20, 8));
+    const p = hoverPoint ? hoverPoint.clone() : new V3(rand(-5, 5), 0, rand(-18, 3));
     const sp = p.clone().setY(1.2).project(camera);
     lightAt(p, { x: (sp.x + 1) * 0.5 * innerWidth, y: (1 - sp.y) * 0.5 * innerHeight });
     return;
@@ -1772,6 +1689,7 @@ function adaptQuality(dt) {
   } else perf.calm = 0;
 }
 const par = { x: 0, y: 0 };
+let fovTarget = 60;
 
 /* ================= main loop ================= */
 const clock = new THREE.Clock();
@@ -1792,6 +1710,7 @@ function frame() {
     night.n = 1; night.win = 1; night.lit = Math.max(night.lit, 1.08);
     streetT += dt; const k = ease(clamp(streetT / 2.8, 0, 1)), sp = streetPose();
     camPos.lerpVectors(streetFrom.pos, sp.pos, k); camLook.lerpVectors(streetFrom.look, sp.look, k);
+    fovTarget = lerp(60, POSE.street.fov, k);
     if (k >= 1) arriveStreet();
   }
   if (state === 'street' || state === 'play' || state === 'finale' || state === 'end') {
@@ -1816,6 +1735,8 @@ function frame() {
   // camera + shake
   camera.position.copy(camPos);
   if (shake > 0.001) { camera.position.x += (Math.random() - 0.5) * shake * 0.5; camera.position.y += (Math.random() - 0.5) * shake * 0.5; shake *= Math.pow(0.02, dt); }
+  if (state === 'pre' || state === 'intro' || state === 'title') fovTarget = 60; else if (state !== 'toStreet') fovTarget = POSE.street.fov;
+  if (Math.abs(camera.fov - fovTarget) > 0.01) { camera.fov = fovTarget; camera.updateProjectionMatrix(); updateScale(); }
   camera.lookAt(camLook); sky.position.copy(camera.position); stars.position.copy(camera.position);
 
   // systems
@@ -1841,7 +1762,7 @@ function frame() {
   clockFace.material.color.setRGB(lerp(0.19, 1, night.win), lerp(0.16, 0.92, night.win), lerp(0.12, 0.7, night.win));
   beacon.material.color.setRGB(0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.sin(time * 2.2), 3), 0.05, 0.05); // soft pulse, not a hard blink
   lampMat.uniforms.uTime.value = time; stars.material.uniforms.uTime.value = time;
-  updatePeople(dt); birds.update(dt);
+  birds.update(dt);
   // tray cooldowns
   if (state === 'play' || state === 'finale') tray.querySelectorAll('.cracker').forEach((b) => { const c = byId[b.dataset.id], left = Math.max(0, (cooldownUntil[c.id] || 0) - time); b.style.setProperty('--cd', (left / c.cd).toFixed(3)); });
   // toast

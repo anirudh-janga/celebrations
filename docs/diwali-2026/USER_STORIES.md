@@ -28,10 +28,6 @@ As a guest, I want thousands of diyas to light up across rooftops, balconies and
 As a guest who opens the link twice, I want the sky and city to change, so that it feels alive.
 - Acceptance: each visit picks one of four sunset palettes (saffron, rose, gold, ember), a sun position, clear or cloudy streaks, and a new layout of buildings and landmarks; a flock of birds crosses the sunset.
 
-**A3c. People in the scene**
-As a guest, I want to see people celebrating, so that the street feels like a real Diwali night.
-- Acceptance: stick-figure families on the footpaths and rooftops, some waving, some walking, kids with sparklers; they cheer and jump when fireworks go off nearby.
-
 **A3d. No flicker**
 As a guest, I want the opening shot to be steady, so that it looks polished.
 - Acceptance: no shimmering ground or buildings (depth precision, offsets, mipmapped textures, antialiasing on every device); no blurred overlays over the 3D view; no hard-blinking lights.
@@ -48,9 +44,9 @@ As a host, I want to add my name to the link (for example `#from-Anirudh`), so t
 
 ## Epic B: The street and the cracker box
 
-**B1. Down to the street**
+**B1. Down to the street (close-up)**
 As a guest, I want the camera to swoop from the rooftop view down to a lane lined with houses, rangoli and diyas, so that I am right where the crackers go off.
-- Acceptance: a smooth 2–3 second camera move; the street shows a rangoli at the centre and diyas along both sides.
+- Acceptance: a smooth 2–3 second camera move that ends low and close, with a narrower lens, so the lane, rangoli and the fireworks fill the frame; tips sit at the top so the street stays clear; shells burst further down the lane so they stay in view.
 
 **B2. Pick a cracker from the box**
 As a player, I want a "cracker box" tray with at least 10 Indian firecrackers, each with a picture and name, so that I can choose what to burst.
