@@ -265,7 +265,7 @@ body.kb .cracker kbd { display: block; }
 <!-- HUD -->
 <div id="hud" hidden>
   <div class="meter" aria-live="polite">
-    <div class="meter-top"><b>Light</b><span class="num" id="scoreNum">0 / 2000</span></div>
+    <div class="meter-top"><b>Light</b><span class="num" id="scoreNum">0 / 3000</span></div>
     <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
   </div>
   <div class="timer" id="timer" aria-label="Seconds left">60</div>
@@ -571,7 +571,7 @@ const fillR = new THREE.DirectionalLight(0xffa860, 0); fillR.position.set(-1, 0.
 const flashLights = [];
 for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xffaa55, 0, 55, 2); l.position.set(0, -50, 0); scene.add(l); flashLights.push(l); }
 function glowAt(p, color, intensity) {
-  intensity *= 0.55;
+  intensity = Math.min(4.5, intensity * 0.42); // capped, so a busy street glows without washing the walls out
   let best = null;
   for (const l of flashLights) if (l.position.distanceToSquared(p) < 4) { best = l; break; }
   if (!best) { best = flashLights[0]; for (const l of flashLights) if (l.intensity < best.intensity) best = l; if (best.intensity > intensity) return; }
@@ -866,11 +866,11 @@ const birds = (() => {
 
 // build the lamp cloud
 const lampMat = new THREE.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uLit: { value: 0 }, uScale: pointScale },
+  uniforms: { uTime: { value: 0 }, uLit: { value: 0 }, uScale: pointScale, uBoost: { value: 0 } },
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
   vertexShader: `
     attribute vec3 aColor; attribute float aSize, aDelay, aPhase, aMode;
-    uniform float uTime, uLit, uScale; varying vec3 vColor; varying float vA;
+    uniform float uTime, uLit, uScale, uBoost; varying vec3 vColor; varying float vA;
     void main(){
       vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
       float on = smoothstep(aDelay, aDelay + 0.03, uLit);
@@ -879,8 +879,8 @@ const lampMat = new THREE.ShaderMaterial({
       else if (aMode < 1.5) fl = 0.3 + 0.7 * step(0.0, sin(uTime * 3.2 - aPhase));
       else fl = 0.55 + 0.45 * sin(uTime * 1.6 + aPhase * 2.0);
       float pop = 1.0 + 1.6 * (1.0 - smoothstep(0.0, 0.05, uLit - aDelay)) * on;
-      vA = on * fl; vColor = aColor;
-      gl_PointSize = clamp(aSize * uScale / -mv.z * pop * (0.7 + 0.3 * fl), 1.6, 46.0) * on;
+      vA = on * fl * (1.0 + uBoost); vColor = aColor;
+      gl_PointSize = clamp(aSize * uScale / -mv.z * pop * (0.7 + 0.3 * fl) * (1.0 + uBoost * 0.5), 1.6, 52.0) * on;
     }`,
   fragmentShader: `varying vec3 vColor; varying float vA;
     void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; if (d > 1.0) discard;
@@ -899,12 +899,14 @@ const lampMat = new THREE.ShaderMaterial({
 })();
 
 /* ================= particles (fireworks) ================= */
-const F_FLICKER = 1, F_TRAIL = 2, F_EMBER = 4, F_SPLIT = 8, F_CRACKLE = 16, F_INK = 32;
+// star behaviours: trails, embers that cool to orange, crossette splits, crackle on death, sparkler ink,
+// colour-change mid-flight, "fish" that wriggle, paper that flutters, strobing glitter
+const F_FLICKER = 1, F_TRAIL = 2, F_EMBER = 4, F_SPLIT = 8, F_CRACKLE = 16, F_INK = 32, F_SHIFT = 64, F_WIGGLE = 128, F_FLUTTER = 256, F_STROBE = 512;
 const P = (() => {
-  const N = { phone: 11000, tablet: 15000, desktop: 16000 }[TIER];
-  const pos = new Float32Array(N * 3), vel = new Float32Array(N * 3), col = new Float32Array(N * 3), base = new Float32Array(N * 3);
-  const size = new Float32Array(N), bsize = new Float32Array(N), alpha = new Float32Array(N), life = new Float32Array(N), maxLife = new Float32Array(N);
-  const drag = new Float32Array(N), grav = new Float32Array(N), flags = new Uint8Array(N);
+  const N = { phone: 12000, tablet: 18000, desktop: 22000 }[TIER];
+  const pos = new Float32Array(N * 3), vel = new Float32Array(N * 3), col = new Float32Array(N * 3), base = new Float32Array(N * 3), alt = new Float32Array(N * 3);
+  const size = new Float32Array(N), bsize = new Float32Array(N), alpha = new Float32Array(N), life = new Float32Array(N), maxLife = new Float32Array(N), seed = new Float32Array(N);
+  const drag = new Float32Array(N), grav = new Float32Array(N), flags = new Uint16Array(N);
   let cursor = 0;
   const g = new THREE.BufferGeometry();
   const aPos = new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage);
@@ -924,10 +926,11 @@ const P = (() => {
   function spawn(x, y, z, vx, vy, vz, r, gg, b, sz, lf, dr = 1.2, gr = 4, fl = 0) {
     const i = cursor; cursor = (cursor + 1) % N; const i3 = i * 3;
     pos[i3] = x; pos[i3 + 1] = y; pos[i3 + 2] = z; vel[i3] = vx; vel[i3 + 1] = vy; vel[i3 + 2] = vz;
-    base[i3] = col[i3] = r; base[i3 + 1] = col[i3 + 1] = gg; base[i3 + 2] = col[i3 + 2] = b;
-    bsize[i] = size[i] = sz; life[i] = maxLife[i] = lf; drag[i] = dr; grav[i] = gr; flags[i] = fl; alpha[i] = 1;
+    base[i3] = col[i3] = alt[i3] = r; base[i3 + 1] = col[i3 + 1] = alt[i3 + 1] = gg; base[i3 + 2] = col[i3 + 2] = alt[i3 + 2] = b;
+    bsize[i] = size[i] = sz; life[i] = maxLife[i] = lf; drag[i] = dr; grav[i] = gr; flags[i] = fl; alpha[i] = 1; seed[i] = Math.random() * 6.283;
     return i;
   }
+  function setAlt(i, r, gg, b) { const i3 = i * 3; alt[i3] = r; alt[i3 + 1] = gg; alt[i3 + 2] = b; flags[i] |= F_SHIFT; }
   const deaths = []; let liveLast = 0;
   function update(dt) {
     deaths.length = 0; let live = 0;
@@ -935,33 +938,39 @@ const P = (() => {
       if (life[i] <= 0) continue;
       live++; life[i] -= dt; const i3 = i * 3;
       if (life[i] <= 0) { size[i] = 0; alpha[i] = 0; if (flags[i] & (F_SPLIT | F_CRACKLE)) deaths.push(i); continue; }
+      const f = flags[i];
+      if (f & F_WIGGLE) { vel[i3] += (Math.random() - 0.5) * 34 * dt; vel[i3 + 1] += (Math.random() - 0.5) * 34 * dt; vel[i3 + 2] += (Math.random() - 0.5) * 34 * dt; }
+      if (f & F_FLUTTER) { vel[i3] += Math.sin(time * 7 + seed[i]) * 5 * dt; vel[i3 + 2] += Math.cos(time * 6 + seed[i]) * 5 * dt; }
       const k = Math.max(0, 1 - drag[i] * dt);
       vel[i3] *= k; vel[i3 + 1] = vel[i3 + 1] * k - grav[i] * dt; vel[i3 + 2] *= k;
       pos[i3] += vel[i3] * dt; pos[i3 + 1] += vel[i3 + 1] * dt; pos[i3 + 2] += vel[i3 + 2] * dt;
-      if (pos[i3 + 1] < 0.04) { pos[i3 + 1] = 0.04; vel[i3 + 1] *= -0.25; vel[i3] *= 0.6; vel[i3 + 2] *= 0.6; }
-      const t = 1 - life[i] / maxLife[i], f = flags[i];
+      if (pos[i3 + 1] < 0.04) { pos[i3 + 1] = 0.04; vel[i3 + 1] *= -0.3; vel[i3] *= 0.6; vel[i3 + 2] *= 0.6; } // sparks skitter on the road
+      const t = 1 - life[i] / maxLife[i];
       let a = t < 0.05 ? t / 0.05 : 1 - Math.pow(Math.max(0, (t - 0.55) / 0.45), 1.6);
       if (f & F_INK) a = t < 0.65 ? 1 : 1 - (t - 0.65) / 0.35;
       if ((f & F_FLICKER) && t > 0.35 && Math.random() < 0.45) a *= 0.12;
+      if ((f & F_STROBE) && t > 0.25 && Math.sin(time * 38 + seed[i] * 9) < 0.2) a *= 0.05;
       alpha[i] = a;
-      if (f & F_EMBER) { const e = t * t; col[i3] = lerp(base[i3], 1.0, e); col[i3 + 1] = lerp(base[i3 + 1], 0.42, e); col[i3 + 2] = lerp(base[i3 + 2], 0.12, e); }
+      const src = (f & F_SHIFT) && t > 0.42 ? alt : base; // colour-change stars switch halfway
+      if (f & F_EMBER) { const e = t * t; col[i3] = lerp(src[i3], 1.0, e); col[i3 + 1] = lerp(src[i3 + 1], 0.42, e); col[i3 + 2] = lerp(src[i3 + 2], 0.12, e); }
+      else if (f & F_SHIFT) { col[i3] = src[i3]; col[i3 + 1] = src[i3 + 1]; col[i3 + 2] = src[i3 + 2]; }
       size[i] = bsize[i] * (1 - t * 0.45);
       if ((f & F_TRAIL) && Math.random() < 0.55) {
-        const j = spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], vel[i3] * 0.05, vel[i3 + 1] * 0.05, vel[i3 + 2] * 0.05, base[i3] * 0.9, base[i3 + 1] * 0.7, base[i3 + 2] * 0.5, bsize[i] * 0.55, rand(0.25, 0.6), 2, 1.5, F_EMBER);
+        const j = spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], vel[i3] * 0.05, vel[i3 + 1] * 0.05, vel[i3 + 2] * 0.05, col[i3] * 0.9, col[i3 + 1] * 0.7, col[i3 + 2] * 0.5, bsize[i] * 0.55, rand(0.25, 0.6), 2, 1.5, F_EMBER);
         alpha[j] = 0.7;
       }
     }
     for (const i of deaths) {
       const i3 = i * 3;
-      if (flags[i] & F_SPLIT) for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + Math.random(); spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], Math.cos(a) * 5, rand(-1, 2), Math.sin(a) * 5, base[i3], base[i3 + 1], base[i3 + 2], bsize[i] * 0.9, rand(0.5, 0.8), 1.6, 3, F_TRAIL | F_EMBER); }
-      if (flags[i] & F_CRACKLE) for (let k = 0; k < 3; k++) spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], rand(-3, 3), rand(-3, 3), rand(-3, 3), 1, 0.95, 0.85, bsize[i] * 0.6, rand(0.06, 0.16), 3, 0, 0);
+      if (flags[i] & F_SPLIT) for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + Math.random(); const j = spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], Math.cos(a) * 5, rand(-1, 2), Math.sin(a) * 5, col[i3], col[i3 + 1], col[i3 + 2], bsize[i] * 0.9, rand(0.5, 0.8), 1.6, 3, F_TRAIL | F_EMBER); }
+      if (flags[i] & F_CRACKLE) for (let k = 0; k < 4; k++) spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], rand(-3.5, 3.5), rand(-3.5, 3.5), rand(-3.5, 3.5), 1, 0.95, 0.85, bsize[i] * 0.6, rand(0.05, 0.14), 3, 0, 0);
     }
     if (deaths.length) sfx.crackleBurst(Math.min(deaths.length, 30));
     if (live || liveLast) aPos.needsUpdate = aCol.needsUpdate = aSize.needsUpdate = aAlpha.needsUpdate = true;
     liveLast = live;
   }
   function clear() { life.fill(0); size.fill(0); alpha.fill(0); }
-  return { spawn, update, clear };
+  return { spawn, setAlt, update, clear };
 })();
 
 /* ---------- smoke ---------- */
@@ -1007,12 +1016,19 @@ function shockwave(p, maxR, color = 0xfff1c8, dur = 0.6) {
 /* ---------- ash snakes (saanp goli) ---------- */
 const SNAKE_MAX = 900;
 const snakeMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 7, 5), new THREE.MeshLambertMaterial({ color: 0x3a3330 }), SNAKE_MAX);
+snakeMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(SNAKE_MAX * 3).fill(1), 3); snakeMesh.material.color.set(0xffffff);
 snakeMesh.count = 0; snakeMesh.frustumCulled = false; scene.add(snakeMesh);
 const snakeSegs = [];
 
 /* ================= sound (all synthesized) ================= */
+// stereo-panned to where things happen on screen, with a reverb tail so big ones echo down the street
 const sfx = (() => {
-  let ctx = null, master = null, noise = null, muted = false, lastCrackle = 0;
+  let ctx = null, master = null, verb = null, noise = null, muted = false, lastCrackle = 0;
+  function impulse(sec, decay) {
+    const len = (ctx.sampleRate * sec) | 0, b = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+    return b;
+  }
   function init() {
     if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -1022,51 +1038,72 @@ const sfx = (() => {
     // iOS Safari only unlocks after a sound starts inside the gesture: play one silent sample now
     try { const b = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(0); } catch (e) {}
     if (ctx.state !== 'running') ctx.resume().catch(() => {});
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 6; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(comp);
+    try { verb = ctx.createConvolver(); verb.buffer = impulse(2.8, 2.6); const vg = ctx.createGain(); vg.gain.value = 0.5; verb.connect(vg); vg.connect(master); } catch (e) { verb = null; }
     const len = ctx.sampleRate * 2; noise = ctx.createBuffer(1, len, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   }
   const ok = () => ctx && ctx.state === 'running';
-  function env(g, t, a, peak, dcy) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dcy); }
-  function nz(t, dur, type, f0, f1, q, peak, attack = 0.005) {
+  function out(pan = 0, wet = 0) { // a little routing node: pan left/right, optionally send to the reverb
+    let node = master;
+    if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -0.9, 0.9); p.connect(master); node = p; }
+    if (wet && verb) { const g = ctx.createGain(); g.connect(node); const w = ctx.createGain(); w.gain.value = wet; g.connect(w); w.connect(verb); return g; }
+    return node;
+  }
+  function env(g, t, a, peak, dcy) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dcy); }
+  function nz(t, dur, type, f0, f1, q, peak, attack = 0.005, dest = master) {
     const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; s.playbackRate.value = rand(0.8, 1.2);
     const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
     const g = ctx.createGain(); env(g, t, attack, peak, dur);
-    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 1.5); s.stop(t + attack + dur + 0.05);
+    s.connect(f); f.connect(g); g.connect(dest); s.start(t, Math.random() * 1.5); s.stop(t + attack + dur + 0.05);
   }
-  function tone(t, dur, type, f0, f1, peak, attack = 0.005) {
+  function tone(t, dur, type, f0, f1, peak, attack = 0.005, dest = master) {
     const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    const g = ctx.createGain(); env(g, t, attack, peak, dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + attack + dur + 0.05); return o;
+    const g = ctx.createGain(); env(g, t, attack, peak, dur); o.connect(g); g.connect(dest); o.start(t); o.stop(t + attack + dur + 0.05); return o;
   }
   return {
     init,
     setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05); },
     get muted() { return muted; },
-    boom(size = 1, delay = 0, dist = 0) {
-      if (!ok()) return; const t = ctx.currentTime + delay, far = clamp(1 - dist, 0.12, 1);
-      tone(t, 0.55 + size * 0.4, 'sine', 110 * (1.1 - size * 0.2), 32, 0.9 * size * far);
-      nz(t, 0.5 + size * 0.7, 'lowpass', 2600 * far + 300, 120, 0.7, 0.85 * size * far);
-      if (dist < 0.5) nz(t, 0.06, 'highpass', 1800, 0, 0.5, 0.5 * size);
+    boom(size = 1, delay = 0, dist = 0, pan = 0) {
+      if (!ok()) return; const t = ctx.currentTime + delay, far = clamp(1 - dist, 0.12, 1), o = out(pan * 0.8, 0.25 + 0.25 * size * far), pitch = rand(0.85, 1.15);
+      tone(t, 0.55 + size * 0.45, 'sine', 110 * pitch * (1.1 - size * 0.2), 30, 0.9 * size * far, 0.005, o);
+      nz(t, 0.5 + size * 0.8, 'lowpass', (2600 * far + 300) * pitch, 110, 0.7, 0.85 * size * far, 0.005, o);
+      if (dist < 0.5) nz(t, 0.07, 'highpass', 1800, 0, 0.5, 0.55 * size, 0.002, o);
     },
-    pop(gain = 0.6) { if (!ok()) return; const t = ctx.currentTime; nz(t, rand(0.04, 0.09), 'bandpass', rand(1400, 2600), 600, 0.9, gain); tone(t, 0.06, 'sine', 180, 60, gain * 0.5); },
-    snap() { if (!ok()) return; const t = ctx.currentTime; nz(t, 0.03, 'highpass', 3000, 0, 0.7, 0.45); },
+    thunder(size = 1, pan = 0) { // the long rumble after a mega bomb, rolling between the buildings
+      if (!ok()) return; const t = ctx.currentTime, o = out(pan * 0.5, 0.6);
+      tone(t, 1.6, 'sine', 62, 26, 0.9 * size, 0.01, o); nz(t + 0.05, 2.6, 'lowpass', 900, 90, 0.8, 0.7 * size, 0.08, o);
+      for (let i = 0; i < 5; i++) nz(t + 0.3 + i * rand(0.25, 0.45), 0.5, 'lowpass', rand(300, 700), 120, 0.7, 0.25 * size, 0.02, o);
+    },
+    pop(gain = 0.6, pan = 0) { if (!ok()) return; const t = ctx.currentTime, o = out(pan, 0.12); nz(t, rand(0.04, 0.09), 'bandpass', rand(1300, 2800), 600, 0.9, gain, 0.003, o); tone(t, 0.06, 'sine', rand(150, 220), 60, gain * 0.5, 0.003, o); },
+    snap(pan = 0) { if (!ok()) return; const o = out(pan, 0.05); nz(ctx.currentTime, 0.03, 'highpass', rand(2600, 3600), 0, 0.7, 0.45, 0.002, o); },
+    click(pan = 0) { if (!ok()) return; const o = out(pan); tone(ctx.currentTime, 0.02, 'square', 2200, 1800, 0.05, 0.001, o); },
+    ignite(pan = 0) { if (!ok()) return; const t = ctx.currentTime, o = out(pan); nz(t, 0.16, 'highpass', 3500, 7000, 0.7, 0.16, 0.003, o); tone(t, 0.03, 'triangle', 1800, 900, 0.05, 0.001, o); },
     crackleBurst(n) {
       if (!ok()) return; const now = ctx.currentTime; if (now - lastCrackle < 0.05) return; lastCrackle = now;
-      for (let i = 0; i < Math.min(n, 12); i++) nz(now + Math.random() * 0.25, 0.015, 'highpass', rand(2500, 6000), 0, 0.6, rand(0.05, 0.16));
+      for (let i = 0; i < Math.min(n, 14); i++) nz(now + Math.random() * 0.25, 0.015, 'highpass', rand(2500, 6500), 0, 0.6, rand(0.05, 0.17));
     },
-    crackle(dur, rate = 30, gain = 0.12) { if (!ok()) return; const t = ctx.currentTime; const n = Math.min(160, (dur * rate) | 0); for (let i = 0; i < n; i++) nz(t + Math.random() * dur, 0.012, 'highpass', rand(2500, 7000), 0, 0.6, rand(gain * 0.4, gain)); },
-    hiss(dur, gain = 0.16, freq = 4200) { if (!ok()) return; nz(ctx.currentTime, dur, 'bandpass', freq, freq * 0.7, 0.6, gain, 0.15); },
-    fuse(dur) { if (!ok()) return; nz(ctx.currentTime, dur, 'bandpass', 5500, 4000, 1.4, 0.07, 0.05); this.crackle(dur, 18, 0.06); },
-    whistle(dur) { if (!ok()) return; const t = ctx.currentTime; const o = tone(t, dur, 'triangle', rand(700, 900), rand(2200, 2800), 0.06, 0.05); nz(t, dur * 0.9, 'bandpass', 2500, 1200, 1, 0.08, 0.03); return o; },
-    thump() { if (!ok()) return; const t = ctx.currentTime; tone(t, 0.18, 'sine', 160, 55, 0.6); nz(t, 0.25, 'bandpass', 900, 2400, 0.8, 0.25); },
-    whirr(dur) {
-      if (!ok()) return; const t = ctx.currentTime;
-      const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 2;
-      const g = ctx.createGain(); env(g, t, 0.2, 0.16, dur); const lfo = ctx.createOscillator(); lfo.frequency.value = 18; const lg = ctx.createGain(); lg.gain.value = 0.08;
-      lfo.connect(lg); lg.connect(g.gain); s.connect(f); f.connect(g); g.connect(master); s.start(t); lfo.start(t); s.stop(t + dur + 0.3); lfo.stop(t + dur + 0.3);
+    crackle(dur, rate = 30, gain = 0.12, pan = 0) { if (!ok()) return; const t = ctx.currentTime, o = out(pan); const n = Math.min(180, (dur * rate) | 0); for (let i = 0; i < n; i++) nz(t + Math.random() * dur, 0.012, 'highpass', rand(2500, 7000), 0, 0.6, rand(gain * 0.4, gain), 0.002, o); },
+    hiss(dur, gain = 0.16, freq = 4200, pan = 0) { if (!ok()) return; nz(ctx.currentTime, dur, 'bandpass', freq * rand(0.9, 1.1), freq * 0.7, 0.6, gain, 0.12, out(pan)); },
+    fuse(dur, pan = 0) { if (!ok()) return; nz(ctx.currentTime, dur, 'bandpass', 5500, 4000, 1.4, 0.08, 0.02, out(pan)); this.crackle(dur, 22, 0.06, pan); },
+    whistle(dur, pan = 0) { // rising, falling or warbling, every rocket sings a little differently
+      if (!ok()) return; const t = ctx.currentTime, o = out(pan, 0.15), kind = Math.random();
+      const osc = tone(t, dur, 'triangle', kind < 0.7 ? rand(650, 950) : rand(2400, 2900), kind < 0.7 ? rand(2100, 2900) : rand(900, 1300), 0.06, 0.04, o);
+      if (kind > 0.85) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = rand(9, 14); lg.gain.value = 120; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + dur + 0.1); }
+      nz(t, dur * 0.9, 'bandpass', 2500, 1200, 1, 0.07, 0.03, o);
     },
-    strike() { if (!ok()) return; nz(ctx.currentTime, 0.12, 'highpass', 2000, 5000, 0.8, 0.22); },
-    chord() { if (!ok()) return; const t = ctx.currentTime; [261.6, 329.6, 392, 523.3].forEach((f, i) => tone(t + i * 0.12, 2.6, 'sine', f, 0, 0.08, 0.1)); },
+    launch(pan = 0) { if (!ok()) return; const t = ctx.currentTime, o = out(pan, 0.1); nz(t, 0.35, 'bandpass', 700, 2600, 0.8, 0.3, 0.004, o); tone(t, 0.12, 'sine', 140, 60, 0.35, 0.003, o); },
+    thump(pan = 0) { if (!ok()) return; const t = ctx.currentTime, o = out(pan, 0.1); tone(t, 0.18, 'sine', rand(140, 180), 55, 0.6, 0.003, o); nz(t, 0.25, 'bandpass', 900, 2400, 0.8, 0.25, 0.003, o); },
+    mortar(pan = 0) { if (!ok()) return; const t = ctx.currentTime, o = out(pan, 0.2); tone(t, 0.22, 'sine', rand(120, 160), 45, 0.75, 0.002, o); nz(t, 0.12, 'bandpass', rand(260, 380), 0, 3, 0.4, 0.002, o); nz(t, 0.3, 'highpass', 1500, 4000, 0.6, 0.15, 0.01, o); },
+    whirr(dur, pan = 0) {
+      if (!ok()) return; const t = ctx.currentTime, o = out(pan);
+      const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = rand(2800, 3600); f.Q.value = 2;
+      const g = ctx.createGain(); env(g, t, 0.2, 0.16, dur); const lfo = ctx.createOscillator(); lfo.frequency.value = rand(14, 22); const lg = ctx.createGain(); lg.gain.value = 0.08;
+      lfo.connect(lg); lg.connect(g.gain); s.connect(f); f.connect(g); g.connect(o); s.start(t); lfo.start(t); s.stop(t + dur + 0.3); lfo.stop(t + dur + 0.3);
+    },
+    strike(pan = 0) { if (!ok()) return; nz(ctx.currentTime, 0.12, 'highpass', 2000, 5000, 0.8, 0.22, 0.003, out(pan)); },
+    chord() { if (!ok()) return; const t = ctx.currentTime, o = out(0, 0.4); [261.6, 329.6, 392, 523.3].forEach((f, i) => tone(t + i * 0.12, 2.6, 'sine', f, 0, 0.08, 0.1, o)); },
   };
 })();
 
@@ -1077,41 +1114,60 @@ function during(sec, fn, done) { emitters.push({ t: 0, update(dt) { this.t += dt
 
 const PAL = {
   saffron: [1, 0.55, 0.12], gold: [1, 0.78, 0.32], ruby: [1, 0.18, 0.28], magenta: [1, 0.25, 0.75], emerald: [0.2, 1, 0.45],
-  peacock: [0.15, 0.85, 0.95], violet: [0.6, 0.35, 1], silver: [0.95, 0.95, 1], rose: [1, 0.45, 0.6], lime: [0.65, 1, 0.3],
+  peacock: [0.15, 0.85, 0.95], violet: [0.6, 0.35, 1], silver: [0.95, 0.95, 1], rose: [1, 0.45, 0.6], lime: [0.65, 1, 0.3], aqua: [0.3, 0.9, 1], coral: [1, 0.45, 0.35],
 };
-const SHELL_COLORS = ['saffron', 'gold', 'ruby', 'magenta', 'emerald', 'peacock', 'violet', 'silver', 'rose', 'lime'];
-const PATTERNS = ['peony', 'chrys', 'ring', 'willow', 'strobe', 'double', 'crossette', 'palm', 'heart', 'peony', 'chrys'];
+const SHELL_COLORS = Object.keys(PAL);
+const PATTERNS = ['peony', 'chrys', 'ring', 'willow', 'strobe', 'double', 'crossette', 'palm', 'heart', 'kamuro', 'shift', 'fish', 'saturn', 'dahlia', 'peony', 'shift', 'chrys'];
 const _d = new V3();
 function randDir(out) { const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u); return out.set(r * Math.cos(th), u, r * Math.sin(th)); }
+function ringBasis() { const ax = randDir(new V3()).multiplyScalar(0.45).add(new V3(0, 0, 1)).normalize(); const u = new V3().crossVectors(ax, new V3(0, 1, 0)).normalize(); return [u, new V3().crossVectors(ax, u)]; }
 
 function burst(p, pattern = pick(PATTERNS), colorName = pick(SHELL_COLORS), scale = 1, far = false) {
-  const c = PAL[colorName], c2 = PAL[pick(SHELL_COLORS)];
-  const S = scale * (far ? 2.6 : 1), sz = (far ? 0.85 : 0.24) * (0.8 + scale * 0.2), cnt = (far ? 0.45 : 1) * Q.fx;
-  const sp = (v) => v * S;
-  const n = (k) => Math.max(12, (k * cnt) | 0);
-  if (!far) glowAt(p, c, 6 * scale);
+  const c = PAL[colorName] || PAL.gold, c2 = PAL[pick(SHELL_COLORS)], c3 = PAL[pick(SHELL_COLORS)];
+  // no two shells alike: size, speed, star count and garnish all vary
+  const S = scale * (far ? 2.6 : 1) * rand(0.88, 1.12), sz = (far ? 0.85 : 0.24) * (0.8 + scale * 0.2) * rand(0.9, 1.15), cnt = (far ? 0.45 : 1) * Q.fx * rand(0.8, 1.2);
+  const sp = (v) => v * S, n = (k) => Math.max(12, (k * cnt) | 0);
+  const crackly = Math.random() < 0.3, shifty = Math.random() < 0.28, pistil = !far && Math.random() < 0.35;
+  const star = (vx, vy, vz, col, size, life, dr, gr, fl) => {
+    const i = P.spawn(p.x, p.y, p.z, vx, vy, vz, col[0], col[1], col[2], size, life, dr, gr, fl | (crackly && Math.random() < 0.45 ? F_CRACKLE : 0));
+    if (shifty) P.setAlt(i, c2[0], c2[1], c2[2]); return i;
+  };
+  if (!far) { glowAt(p, c, 6 * scale); lampBoost(0.25 * scale); }
   switch (pattern) {
-    case 'ring': {
-      const ax = randDir(new V3()).multiplyScalar(0.4).add(new V3(0, 0, 1)).normalize(), u = new V3().crossVectors(ax, new V3(0, 1, 0)).normalize(), w = new V3().crossVectors(ax, u);
-      for (let i = 0, m = n(90); i < m; i++) { const a = (i / m) * Math.PI * 2; _d.copy(u).multiplyScalar(Math.cos(a)).addScaledVector(w, Math.sin(a)); P.spawn(p.x, p.y, p.z, _d.x * sp(11), _d.y * sp(11), _d.z * sp(11), c[0], c[1], c[2], sz, rand(1.3, 1.7), 1.7, 3, F_EMBER); }
-      for (let i = 0, m = n(30); i < m; i++) { randDir(_d); P.spawn(p.x, p.y, p.z, _d.x * sp(3), _d.y * sp(3), _d.z * sp(3), 1, 0.95, 0.8, sz * 0.8, rand(0.8, 1.2), 1.5, 2, F_FLICKER); }
+    case 'ring': case 'saturn': {
+      const [u, w] = ringBasis(), rc = pattern === 'saturn' ? c2 : c;
+      for (let i = 0, m = n(90); i < m; i++) { const a = (i / m) * Math.PI * 2; _d.copy(u).multiplyScalar(Math.cos(a)).addScaledVector(w, Math.sin(a)); star(_d.x * sp(11), _d.y * sp(11), _d.z * sp(11), rc, sz, rand(1.3, 1.7), 1.7, 3, F_EMBER); }
+      if (pattern === 'saturn') for (let i = 0, m = n(80); i < m; i++) { randDir(_d); const s = sp(rand(5, 6)); star(_d.x * s, _d.y * s, _d.z * s, c, sz, rand(1.3, 1.6), 1.6, 3, F_EMBER); }
+      else for (let i = 0, m = n(30); i < m; i++) { randDir(_d); P.spawn(p.x, p.y, p.z, _d.x * sp(3), _d.y * sp(3), _d.z * sp(3), 1, 0.95, 0.8, sz * 0.8, rand(0.8, 1.2), 1.5, 2, F_FLICKER); }
       break;
     }
     case 'willow':
       for (let i = 0, m = n(110); i < m; i++) { randDir(_d); const s = sp(rand(6, 8)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s + 1, _d.z * s, 1, 0.72, 0.28, sz * 0.9, rand(2.6, 3.4), 2.2, 2.6, F_TRAIL | F_EMBER | F_FLICKER); }
       break;
+    case 'kamuro': // heavy gold that hangs in the sky and pours down
+      for (let i = 0, m = n(120); i < m; i++) { randDir(_d); const s = sp(rand(7, 9)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s + 1.5, _d.z * s, 1, 0.82, 0.48, sz * 1.05, rand(3, 3.8), 2.6, 2.1, F_TRAIL | F_EMBER | F_FLICKER | (Math.random() < 0.2 ? F_CRACKLE : 0)); }
+      break;
     case 'palm':
       for (let i = 0; i < 9; i++) { randDir(_d); _d.y = Math.abs(_d.y) * 0.6 + 0.25; _d.normalize(); const s = sp(rand(9, 11)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.75, 0.3, sz * 1.6, rand(1.8, 2.2), 1.3, 5, F_TRAIL | F_EMBER | F_CRACKLE); }
       break;
     case 'strobe':
-      for (let i = 0, m = n(120); i < m; i++) { randDir(_d); const s = sp(rand(7, 10)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, 0.95, 0.95, 1, sz, rand(1.8, 2.4), 1.8, 2.5, F_FLICKER | F_CRACKLE); }
+      for (let i = 0, m = n(120); i < m; i++) { randDir(_d); const s = sp(rand(7, 10)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, 0.95, 0.95, 1, sz, rand(1.8, 2.4), 1.8, 2.5, F_STROBE | F_CRACKLE); }
+      break;
+    case 'fish': // little swimmers that wriggle away
+      for (let i = 0, m = n(70); i < m; i++) { randDir(_d); const s = sp(rand(6, 9)); const col = Math.random() < 0.5 ? PAL.silver : c; P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, col[0], col[1], col[2], sz * 0.9, rand(1.6, 2.2), 1.4, 2.2, F_WIGGLE | F_TRAIL); }
+      break;
+    case 'dahlia': // fewer, fatter stars
+      for (let i = 0, m = n(42); i < m; i++) { randDir(_d); const s = sp(rand(9, 11)); star(_d.x * s, _d.y * s, _d.z * s, i % 2 ? c : c2, sz * 1.7, rand(1.6, 2.0), 1.4, 3.5, F_EMBER | F_TRAIL); }
+      break;
+    case 'shift': // every star changes colour mid-flight
+      for (let i = 0, m = n(140); i < m; i++) { randDir(_d); const s = sp(rand(9.5, 11)); const j = P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c[0], c[1], c[2], sz, rand(1.5, 2.0), 1.6, 3.2, 0); P.setAlt(j, c2[0], c2[1], c2[2]); }
       break;
     case 'double':
-      for (let i = 0, m = n(100); i < m; i++) { randDir(_d); const s = sp(rand(10, 11.5)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c[0], c[1], c[2], sz, rand(1.4, 1.8), 1.6, 3.5, F_EMBER); }
+      for (let i = 0, m = n(100); i < m; i++) { randDir(_d); const s = sp(rand(10, 11.5)); star(_d.x * s, _d.y * s, _d.z * s, c, sz, rand(1.4, 1.8), 1.6, 3.5, F_EMBER); }
       for (let i = 0, m = n(70); i < m; i++) { randDir(_d); const s = sp(rand(5, 6)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c2[0], c2[1], c2[2], sz * 0.9, rand(1.3, 1.6), 1.6, 3, F_FLICKER); }
       break;
     case 'crossette':
-      for (let i = 0, m = n(26); i < m; i++) { randDir(_d); const s = sp(rand(8, 10)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c[0], c[1], c[2], sz * 1.3, rand(0.55, 0.75), 1.2, 3, F_TRAIL | F_SPLIT); }
+      for (let i = 0, m = n(26); i < m; i++) { randDir(_d); const s = sp(rand(8, 10)); star(_d.x * s, _d.y * s, _d.z * s, c, sz * 1.3, rand(0.55, 0.75), 1.2, 3, F_TRAIL | F_SPLIT); }
       break;
     case 'heart': {
       const facing = new V3().subVectors(camera.position, p).setY(0).normalize(), right = new V3(-facing.z, 0, facing.x);
@@ -1123,21 +1179,28 @@ function burst(p, pattern = pick(PATTERNS), colorName = pick(SHELL_COLORS), scal
       break;
     }
     case 'chrys':
-      for (let i = 0, m = n(130); i < m; i++) { randDir(_d); const s = sp(rand(9, 11)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c[0], c[1], c[2], sz, rand(1.3, 1.8), 1.6, 3.5, F_TRAIL | F_EMBER); }
+      for (let i = 0, m = n(130); i < m; i++) { randDir(_d); const s = sp(rand(9, 11)); star(_d.x * s, _d.y * s, _d.z * s, c, sz, rand(1.3, 1.8), 1.6, 3.5, F_TRAIL | F_EMBER); }
       break;
     default: // peony
-      for (let i = 0, m = n(150); i < m; i++) { randDir(_d); const s = sp(rand(9.5, 11)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c[0], c[1], c[2], sz, rand(1.3, 1.9), 1.6, 3.5, F_EMBER | (Math.random() < 0.3 ? F_FLICKER : 0)); }
+      for (let i = 0, m = n(150); i < m; i++) { randDir(_d); const s = sp(rand(9.5, 11)); star(_d.x * s, _d.y * s, _d.z * s, c, sz, rand(1.3, 1.9), 1.6, 3.5, F_EMBER | (Math.random() < 0.3 ? F_FLICKER : 0)); }
   }
+  if (pistil) for (let i = 0, m = n(40); i < m; i++) { randDir(_d); const s = sp(rand(3, 4)); P.spawn(p.x, p.y, p.z, _d.x * s, _d.y * s, _d.z * s, c3[0], c3[1], c3[2], sz * 0.8, rand(0.9, 1.3), 1.8, 2, F_FLICKER); }
 }
 
-// a shell that rises from a point and bursts
-function shell(from, { vy = 22, vx = rand(-1.5, 1.5), vz = rand(-4, -1.5), time = rand(1.0, 1.3), pattern, color, scale = 1, sound = true, trail = [1, 0.7, 0.3] } = {}) {
+// a shell that rises from a point and bursts; sometimes it breaks twice
+function shell(from, { vy = 22, vx = rand(-1.5, 1.5), vz = rand(-4, -1.5), time = rand(1.0, 1.3), pattern, color, scale = 1, sound = true, pan = 0, thump = true } = {}) {
   const p = from.clone(), v = new V3(vx, vy, vz);
-  if (sound) sfx.thump();
+  const trail = pick([[1, 0.7, 0.3], [1, 0.92, 0.8], [1, 0.55, 0.2], [0.9, 0.9, 1]]), glitter = Math.random() < 0.35;
+  if (sound && thump) sfx.thump(pan);
+  if (sound && Math.random() < 0.2) sfx.whistle(time, pan);
   during(time, (dt) => {
     v.y -= 6 * dt; p.addScaledVector(v, dt);
     for (let k = 0; k < 2; k++) P.spawn(p.x, p.y, p.z, rand(-0.4, 0.4), rand(-1.5, 0), rand(-0.4, 0.4), trail[0], trail[1], trail[2], 0.13, rand(0.3, 0.55), 2, 2, F_EMBER | F_FLICKER);
-  }, () => { burst(p, pattern, color, scale); if (sound) sfx.boom(0.55 * scale, 0.05); });
+    if (glitter && Math.random() < 0.6) P.spawn(p.x, p.y, p.z, rand(-1, 1), rand(-1, 0.5), rand(-1, 1), 1, 1, 0.9, 0.07, rand(0.3, 0.6), 2, 1, F_FLICKER | F_CRACKLE);
+  }, () => {
+    burst(p, pattern, color, scale); if (sound) sfx.boom(rand(0.45, 0.65) * scale, 0.05, 0, pan);
+    if (Math.random() < 0.15) after(rand(0.3, 0.5), () => { burst(p.clone().add(new V3(rand(-2, 2), rand(-1, 2), rand(-2, 2))), pick(['strobe', 'ring', 'fish', 'peony']), pick(SHELL_COLORS), scale * 0.6); if (sound) sfx.boom(0.35 * scale, 0, 0, pan); });
+  });
 }
 
 /* ================= camera & shake ================= */
@@ -1149,6 +1212,17 @@ function screenFlash(p, strength) {
   flashLevel = Math.max(flashLevel, strength * (reduceMotion ? 0.3 : 1));
 }
 let flashLevel = 0;
+const _pp = new V3();
+function panOf(v) { _pp.set(v.x, v.y, v.z).project(camera); return clamp(_pp.x, -1, 1); } // left/right position on screen, for stereo sound
+let boost = 0, wind = 0, windowFlash = 0;
+function lampBoost(v) { boost = Math.min(1, boost + v * 0.8); }   // every lamp in the city flares for a moment
+function windGust(v) { wind = Math.min(3, wind + v); }        // lanterns swing after a big blast
+const scorches = [], scorchGeo = new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2);
+function scorch(p, r) { // a dark mark left on the road
+  const m = new THREE.Mesh(scorchGeo, new THREE.MeshBasicMaterial({ color: 0x050303, transparent: true, opacity: 0.55, depthWrite: false }));
+  m.position.set(p.x, 0.11, p.z); m.scale.setScalar(r * rand(0.8, 1.2)); scene.add(m); scorches.push({ m, t: 0 });
+  if (scorches.length > 14) { const o = scorches.shift(); scene.remove(o.m); o.m.material.dispose(); }
+}
 
 /* ================= cracker models ================= */
 const M = {
@@ -1165,54 +1239,83 @@ const models = {
     g.add(mk(new THREE.LatheGeometry(bottleProf, 14), M.glass));
     const r = new THREE.Group(); r.position.y = 0.55;
     r.add(mk(new THREE.CylinderGeometry(0.012, 0.012, 1.1, 4), M.stick, 0.06, 0.25, 0));
-    r.add(mk(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 10), M.red, 0, 0.95, 0));
+    r.add(mk(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 10), pick([M.red, M.blue, M.purple, M.green]), 0, 0.95, 0));
     r.add(mk(new THREE.ConeGeometry(0.075, 0.18, 10), M.gold, 0, 1.24, 0));
     g.add(r); g.userData.rocket = r; return g;
   },
-  anar() { const g = new THREE.Group(); g.add(mk(new THREE.CylinderGeometry(0.06, 0.32, 0.6, 14), M.gold, 0, 0.3, 0)); g.add(mk(new THREE.CylinderGeometry(0.33, 0.33, 0.06, 14), M.clay, 0, 0.03, 0)); return g; },
-  chakri() { const g = new THREE.Group(); const t = mk(new THREE.TorusGeometry(0.28, 0.07, 6, 18), M.green, 0, 0.1, 0); t.rotation.x = Math.PI / 2; g.add(t); g.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 8), M.red, 0, 0.1, 0)); return g; },
+  anar() {
+    const g = new THREE.Group(); g.add(mk(new THREE.CylinderGeometry(0.06, 0.32, 0.6, 14), M.gold, 0, 0.3, 0)); g.add(mk(new THREE.CylinderGeometry(0.33, 0.33, 0.06, 14), M.clay, 0, 0.03, 0));
+    g.add(mk(new THREE.CylinderGeometry(0.2, 0.25, 0.1, 14), pick([M.red, M.green, M.blue]), 0, 0.25, 0)); return g; // paper band
+  },
+  chakri() { const g = new THREE.Group(); const t = mk(new THREE.TorusGeometry(0.28, 0.07, 6, 18), pick([M.green, M.red, M.blue]), 0, 0.1, 0); t.rotation.x = Math.PI / 2; g.add(t); g.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 8), M.gold, 0, 0.1, 0)); return g; },
   phuljhari() { return new THREE.Group(); },
   laxmi() { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(0.24, 12, 10), M.jute, 0, 0.24, 0)); g.add(mk(new THREE.BoxGeometry(0.3, 0.2, 0.02), M.red, 0, 0.26, 0.23)); g.add(mk(new THREE.CylinderGeometry(0.01, 0.01, 0.2, 4), M.dark, 0, 0.55, 0)); return g; },
   hydrogen() { const g = new THREE.Group(); g.add(mk(new THREE.CylinderGeometry(0.28, 0.28, 0.42, 14), M.green, 0, 0.21, 0)); g.add(mk(new THREE.CylinderGeometry(0.29, 0.29, 0.12, 14), M.gold, 0, 0.21, 0)); g.add(mk(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 4), M.dark, 0, 0.53, 0)); return g; },
   ladi() { const g = new THREE.Group(); g.userData.bits = []; for (let i = 0; i < 40; i++) { const b = mk(new THREE.CylinderGeometry(0.035, 0.035, 0.16, 6), i % 2 ? M.red : M.green, -3 + (i / 39) * 6, 0.06, Math.sin(i * 0.7) * 0.15); b.rotation.z = Math.PI / 2 + (i % 2 ? 0.5 : -0.5); g.add(b); g.userData.bits.push(b); } return g; },
-  skyshot() { const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(0.7, 0.55, 0.7), M.purple, 0, 0.275, 0)); g.add(mk(new THREE.BoxGeometry(0.72, 0.08, 0.72), M.gold, 0, 0.5, 0)); return g; },
-  pencil() { const g = new THREE.Group(); const s = mk(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), M.blue, 0, 0.45, 0); g.add(s); g.add(mk(new THREE.CylinderGeometry(0.15, 0.15, 0.05, 10), M.clay, 0, 0.025, 0)); return g; },
+  skyshot() { // a cake of 12 tubes
+    const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(0.72, 0.55, 0.56), M.purple, 0, 0.275, 0)); g.add(mk(new THREE.BoxGeometry(0.74, 0.06, 0.58), M.gold, 0, 0.53, 0));
+    g.userData.tubes = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const t = mk(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 10), M.dark, -0.255 + c * 0.17, 0.575, -0.17 + r * 0.17); g.add(t); g.userData.tubes.push(t); }
+    return g;
+  },
+  pencil() { const g = new THREE.Group(); const s = mk(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), pick([M.blue, M.red, M.purple]), 0, 0.45, 0); g.add(s); g.add(mk(new THREE.CylinderGeometry(0.15, 0.15, 0.05, 10), M.clay, 0, 0.025, 0)); g.userData.stick = s; return g; },
   snake() { const g = new THREE.Group(); g.add(mk(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 10), M.dark, 0, 0.03, 0)); return g; },
-  machis() { const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(0.5, 0.12, 0.32), M.red, 0, 0.06, 0)); g.add(mk(new THREE.BoxGeometry(0.46, 0.125, 0.18), M.gold, 0, 0.065, 0.02)); return g; },
-  tikli() { const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(0.5, 0.16, 0.1), M.dark, 0, 0.12, 0)); g.add(mk(new THREE.BoxGeometry(0.12, 0.28, 0.09), M.stick, -0.18, 0.04, 0)); g.add(mk(new THREE.CylinderGeometry(0.08, 0.08, 0.06, 10), M.red, 0.05, 0.24, 0)); return g; },
+  machis() { // a matchbox with six matches standing in a fan
+    const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(0.5, 0.12, 0.32), M.red, 0, 0.06, 0)); g.add(mk(new THREE.BoxGeometry(0.46, 0.125, 0.18), M.gold, 0, 0.065, 0.02));
+    const stickGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.5, 4); stickGeo.translate(0, 0.25, 0);
+    const headGeo = new THREE.SphereGeometry(0.03, 6, 5); g.userData.sticks = [];
+    for (let i = 0; i < 6; i++) {
+      const s = mk(stickGeo, M.paper, -0.2 + i * 0.08, 0.12, 0); s.rotation.z = (i - 2.5) * 0.09; const h = mk(headGeo, pick([M.red, M.green, M.purple, M.blue]), 0, 0.5, 0); s.add(h); s.userData.head = h; g.add(s); g.userData.sticks.push(s);
+    }
+    return g;
+  },
+  tikli() { // a toy cap gun; the gun group pivots at the grip so it can kick back
+    const g = new THREE.Group(), gun = new THREE.Group(); gun.position.set(-0.18, 0.06, 0);
+    gun.add(mk(new THREE.BoxGeometry(0.52, 0.14, 0.1), M.dark, 0.2, 0.08, 0)); gun.add(mk(new THREE.BoxGeometry(0.12, 0.26, 0.09), M.stick, 0, -0.04, 0)); gun.add(mk(new THREE.CylinderGeometry(0.08, 0.08, 0.06, 10), M.red, 0.22, 0.18, 0));
+    const muzzle = new THREE.Object3D(); muzzle.position.set(0.48, 0.09, 0); gun.add(muzzle);
+    g.add(gun); g.userData.gun = gun; g.userData.muzzle = muzzle; return g;
+  },
 };
 function spawnModel(id, p, rotY = Math.random() * Math.PI * 2) { const g = models[id](); g.position.copy(p); g.rotation.y = rotY; scene.add(g); return g; }
 function removeLater(g, sec) { after(sec, () => scene.remove(g)); }
-function fuse(p, dur, done) {
-  sfx.fuse(dur);
-  during(dur, () => { for (let k = 0; k < 3; k++) P.spawn(p.x, p.y, p.z, rand(-1.2, 1.2), rand(0.4, 2.2), rand(-1.2, 1.2), 1, 0.8, 0.4, 0.06, rand(0.12, 0.3), 1, 6, 0); glowAt(p, [1, 0.6, 0.25], 1.2); }, done);
+// the fuse: a spark that crawls from one point to another, then calls done
+function fuse(p, dur, done, to = null) {
+  sfx.fuse(dur, panOf(p)); const q = new V3();
+  during(dur, (dt, t, k) => { q.copy(p); if (to) q.lerp(to, Math.min(1, k)); for (let i = 0; i < 4; i++) P.spawn(q.x, q.y, q.z, rand(-1.4, 1.4), rand(0.4, 2.6), rand(-1.4, 1.4), 1, 0.8, 0.4, 0.06, rand(0.1, 0.28), 1, 6, 0); glowAt(q, [1, 0.6, 0.25], 1.4); }, done);
+}
+// instant feedback under your finger: a match-flare of sparks the moment you tap
+function ignite(p) {
+  const pan = panOf(p); sfx.ignite(pan);
+  for (let i = 0; i < 16; i++) { randDir(_d); _d.y = Math.abs(_d.y); const s = rand(2, 5); P.spawn(p.x, 0.35, p.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.85, 0.5, 0.07, rand(0.15, 0.35), 2.5, 5, 0); }
+  P.spawn(p.x, 0.35, p.z, 0, 0, 0, 1, 0.9, 0.6, 0.6, 0.12, 0, 0, 0);
+  glowAt(p, [1, 0.75, 0.4], 3);
 }
 
 /* ================= the crackers ================= */
 const CRACKERS = [
-  { id: 'rocket', name: 'Rocket', te: 'తారాజువ్వ', tl: 'Tarajuvva', local: 'Launched from a bottle', pts: 60, cd: 0.7,
+  { id: 'rocket', name: 'Rocket', te: 'తారాజువ్వ', tl: 'Tarajuvva', local: 'Launched from a bottle', pts: 60, cd: 0.3,
     tips: ['In Telugu homes it is the tarajuvva.', 'Every rocket needed an empty glass bottle. Someone always had to go and find one.', 'Half the fun was guessing whose roof it would land on.'] },
-  { id: 'anar', name: 'Flower Pot', te: 'చిచ్చుబుడ్డి', tl: 'Chichubuddi', local: 'A golden fountain', pts: 50, cd: 1.0,
+  { id: 'anar', name: 'Flower Pot', te: 'చిచ్చుబుడ్డి', tl: 'Chichubuddi', local: 'A golden fountain', pts: 50, cd: 0.6,
     tips: ['Telugu kids call it the chichubuddi.', 'The best flower pots reached the first-floor balcony. Everyone kept score.', 'Light five in a row and you get a garden of sparks.'] },
-  { id: 'chakri', name: 'Ground Spinner', te: 'భూచక్రం', tl: 'Bhoochakram', local: 'Spins and sprays', pts: 50, cd: 1.0,
+  { id: 'chakri', name: 'Ground Spinner', te: 'భూచక్రం', tl: 'Bhoochakram', local: 'Spins and sprays', pts: 50, cd: 0.6,
     tips: ['In Telugu it is the bhoochakram, the earth wheel.', 'Every ground spinner chased the one kid who was most scared of it.', 'The dud ones always started spinning when someone walked over to check.'] },
-  { id: 'phuljhari', name: 'Sparkler', te: 'కాకరపువ్వొత్తులు', tl: 'Kakarapuvvottulu', local: 'Draw in the air', pts: 45, cd: 6,
+  { id: 'phuljhari', name: 'Sparkler', te: 'కాకరపువ్వొత్తులు', tl: 'Kakarapuvvottulu', local: 'Draw in the air', pts: 45, cd: 4,
     tips: ['In Telugu they are kakarapuvvottulu.', 'Drag to write your name in the air.', 'Used sparklers go in a bucket of water. That hiss is part of the fun.', 'The one firework that grandparents and toddlers both love.'] },
-  { id: 'laxmi', name: 'Bomb', te: 'లక్ష్మీ బాంబు', tl: 'Lakshmi bomb', local: 'One big bang', pts: 70, cd: 2.2,
+  { id: 'laxmi', name: 'Bomb', te: 'లక్ష్మీ బాంబు', tl: 'Lakshmi bomb', local: 'One big bang', pts: 70, cd: 1.1,
     tips: ['Telugu homes call it the Lakshmi bomb.', 'The tight string wrapped around it is what makes the bang so loud.', 'Everyone counts down with their fingers in their ears.', 'If one doesn\'t go off, wait five minutes before going near it.'] },
-  { id: 'ladi', name: 'Cracker Chain', te: 'టపాకాయల దండ', tl: 'Tapakayala danda', local: '40 quick pops', pts: 100, cd: 4.5,
+  { id: 'ladi', name: 'Cracker Chain', te: 'టపాకాయల దండ', tl: 'Tapakayala danda', local: '40 quick pops', pts: 100, cd: 2.8,
     tips: ['Cracker chains come out for weddings, cricket wins and Diwali night.', 'Delhi kept these banned even on Diwali this year. This one is pure pixels.'] },
-  { id: 'skyshot', name: 'Sky Shot', te: 'స్కై షాట్', tl: 'Sky shot', local: '12 shells in a row', pts: 130, cd: 6.5,
+  { id: 'skyshot', name: 'Sky Shot', te: 'స్కై షాట్', tl: 'Sky shot', local: '12 shells in a row', pts: 130, cd: 4,
     tips: ['Count the shots out loud. Everyone loses track at seven.', 'Watch the whole street look up at once.'] },
-  { id: 'hydrogen', name: 'Mega Bomb', te: 'హైడ్రోజన్ బాంబు', tl: 'Hydrogen bomb', local: 'The loudest one', pts: 90, cd: 3.5,
+  { id: 'hydrogen', name: 'Mega Bomb', te: 'హైడ్రోజన్ బాంబు', tl: 'Hydrogen bomb', local: 'The loudest one', pts: 90, cd: 2.4,
     tips: ['You light it, and the whole street goes quiet waiting.', 'If it sets off a car alarm, it was a good one.'] },
-  { id: 'pencil', name: 'Colour Pencil', te: 'రంగుల పెన్సిల్', tl: 'Rangula pencil', local: 'Changes colour', pts: 35, cd: 0.9,
+  { id: 'pencil', name: 'Colour Pencil', te: 'రంగుల పెన్సిల్', tl: 'Rangula pencil', local: 'Changes colour', pts: 35, cd: 0.5,
     tips: ['Red, then green, then gold. Everyone shouts out the colours.', 'Often the first firework bought with your own pocket money.'] },
-  { id: 'machis', name: 'Colour Matches', te: 'రంగుల అగ్గిపుల్లలు', tl: 'Rangula aggipullalu', local: 'Coloured flames', pts: 30, cd: 0.9,
+  { id: 'machis', name: 'Colour Matches', te: 'రంగుల అగ్గిపుల్లలు', tl: 'Rangula aggipullalu', local: 'Coloured flames', pts: 30, cd: 0.6,
     tips: ['Metal salts make the colours, the same science as every firework.', 'Grown-ups used them to light lamps. Kids used them to show off.'] },
-  { id: 'snake', name: 'Snake Tablet', te: 'పాము బిళ్ళలు', tl: 'Paamu billalu', local: 'Grows an ash snake', pts: 30, cd: 0.9,
+  { id: 'snake', name: 'Snake Tablet', te: 'పాము బిళ్ళలు', tl: 'Paamu billalu', local: 'Grows an ash snake', pts: 30, cd: 0.5,
     tips: ['In Telugu they are paamu billalu, snake tablets.', 'A tiny black pill turns into a long snake of ash. Pure magic at age six.', 'It leaves a black mark on the floor for weeks.'] },
-  { id: 'tikli', name: 'Cap Gun', te: 'బొమ్మ తుపాకీ', tl: 'Bomma tupaki', local: 'Pop, pop, pop', pts: 25, cd: 0.6,
+  { id: 'tikli', name: 'Cap Gun', te: 'బొమ్మ తుపాకీ', tl: 'Bomma tupaki', local: 'Pop, pop, pop', pts: 25, cd: 0.4,
     tips: ['A roll of caps in a toy gun: the cheapest, longest-lasting Diwali fun.', 'Out of guns? Kids hit the caps with a stone. Same thrill.'] },
 ];
 const GENERAL_TIPS = [
@@ -1240,145 +1343,215 @@ const ICONS = {
 };
 const byId = Object.fromEntries(CRACKERS.map((c) => [c.id, c]));
 
-/* ---------- effects per cracker ---------- */
+/* ---------- effects per cracker: each with its own character, never quite the same twice ---------- */
 const FX = {
-  rocket(p) {
-    const g = spawnModel('rocket', p); const r = g.userData.rocket;
-    fuse(new V3(p.x, p.y + 0.62, p.z), 0.9, () => {
+  rocket(p) { // rocket in a bottle: tilted bottle, launch flash, a smoky glowing trail; some swerve, some break twice
+    const g = spawnModel('rocket', p); const r = g.userData.rocket, pan = panOf(p);
+    g.rotation.z = rand(-0.1, 0.1); g.rotation.x = rand(-0.08, 0.08);
+    fuse(new V3(p.x, 0.62, p.z), rand(0.25, 0.4), () => {
       const wp = new V3(); r.getWorldPosition(wp); g.remove(r); scene.add(r); r.position.copy(wp); r.rotation.set(0, 0, 0);
-      const apex = rand(1.25, 1.45), v = new V3(rand(-0.8, 0.8), 13, (rand(-50, -40) - p.z) / apex), up = new V3(0, 1, 0), dir = new V3();
-      sfx.whistle(apex); sfx.thump();
+      const kind = Math.random(), swerve = kind < 0.12, twoBreak = kind >= 0.12 && kind < 0.32;
+      const apex = rand(1.15, 1.5), v = new V3(rand(-1.2, 1.2), rand(12, 14.5), (rand(-52, -38) - p.z) / apex), up = new V3(0, 1, 0), dir = new V3();
+      const trail = pick([[1, 0.75, 0.35], [1, 0.95, 0.85], [1, 0.55, 0.2]]);
+      sfx.whistle(apex, pan); sfx.launch(pan);
+      for (let k = 0; k < 26; k++) { randDir(_d); _d.y = -Math.abs(_d.y) * 0.4; const s = rand(2, 5); P.spawn(wp.x, wp.y + 0.3, wp.z, _d.x * s, _d.y * s + 1, _d.z * s, 1, 0.8, 0.4, 0.08, rand(0.15, 0.4), 2.5, 4, 0); }
+      glowAt(wp, [1, 0.7, 0.3], 4); Smoke.puff(wp.x, 0.6, wp.z, 0.7, 0.35, 2.5);
+      let tt = 0;
       during(apex, (dt) => {
-        v.y += 5 * dt; v.x += Math.sin(performance.now() * 0.02) * 0.4 * dt; r.position.addScaledVector(v, dt); r.quaternion.setFromUnitVectors(up, dir.copy(v).normalize());
-        for (let k = 0; k < 4; k++) P.spawn(r.position.x, r.position.y + 0.6, r.position.z, -v.x * 0.08 + rand(-0.8, 0.8), -v.y * 0.1 + rand(-0.5, 0.5), -v.z * 0.08 + rand(-0.8, 0.8), 1, 0.75, 0.35, 0.12, rand(0.35, 0.7), 2, 2, F_EMBER | F_FLICKER);
-        glowAt(r.position, [1, 0.6, 0.25], 1.5);
-      }, () => { scene.remove(r); const bp = r.position.clone().add(new V3(0, 1, 0)); burst(bp); sfx.boom(0.7, 0.08); });
+        tt += dt; v.y += 5 * dt;
+        v.x += swerve ? Math.sin(tt * 13) * 30 * dt : Math.sin(tt * 20) * 0.6 * dt;
+        r.position.addScaledVector(v, dt); r.quaternion.setFromUnitVectors(up, dir.copy(v).normalize());
+        for (let k = 0; k < 5; k++) P.spawn(r.position.x, r.position.y + 0.6, r.position.z, -v.x * 0.08 + rand(-0.8, 0.8), -v.y * 0.1 + rand(-0.5, 0.5), -v.z * 0.08 + rand(-0.8, 0.8), trail[0], trail[1], trail[2], 0.12, rand(0.35, 0.7), 2, 2, F_EMBER | F_FLICKER | (Math.random() < 0.05 ? F_CRACKLE : 0));
+        if (Math.random() < 0.3) Smoke.puff(r.position.x, r.position.y, r.position.z, 0.3, 0.16, 1.6);
+        glowAt(r.position, [1, 0.6, 0.25], 1.6);
+        g.rotation.x = Math.sin(tt * 30) * 0.14 * Math.max(0, 1 - tt * 2.5); // the bottle rocks from the kick
+      }, () => {
+        scene.remove(r); const bp = r.position.clone().add(new V3(0, 1, 0)); burst(bp, undefined, undefined, rand(0.9, 1.15)); sfx.boom(rand(0.6, 0.85), 0.06, 0, pan);
+        if (twoBreak) after(rand(0.35, 0.55), () => { burst(bp.clone().add(new V3(rand(-3, 3), rand(-1, 2), rand(-2, 2))), pick(['strobe', 'ring', 'peony', 'fish']), pick(SHELL_COLORS), 0.65); sfx.boom(0.4, 0, 0, pan); });
+      });
       removeLater(g, 4);
     });
   },
-  anar(p) {
-    const g = spawnModel('anar', p); const top = new V3(p.x, 0.62, p.z);
-    fuse(top, 0.7, () => {
-      const D = 4.6; let acc = 0; sfx.hiss(D, 0.2); sfx.crackle(D, 26, 0.12);
+  anar(p) { // flower pot: breathes and surges, coughs out crackling clumps, gold or silver or tipped with colour
+    const g = spawnModel('anar', p); const top = new V3(p.x, 0.62, p.z), pan = panOf(p);
+    const style = pick(['gold', 'silver', 'rainbow', 'gold']), H = rand(0.8, 1.25), D = rand(4, 5.4), tips = [PAL.ruby, PAL.emerald, PAL.violet, PAL.aqua, PAL.magenta];
+    fuse(top, 0.22, () => {
+      let acc = 0; sfx.hiss(D, 0.22, 4200, pan); sfx.crackle(D, 32, 0.13, pan);
       during(D, (dt, t) => {
-        const k = Math.min(1, t / 0.6) * (t > D - 0.9 ? (D - t) / 0.9 : 1) * (0.85 + 0.15 * Math.sin(t * 9));
-        acc += 260 * Q.fx * k * dt;
-        while (acc >= 1) { acc--; const a = Math.random() * 6.283, r = Math.pow(Math.random(), 1.5) * 2.4, up = rand(9, 15) * (0.6 + 0.4 * k); const gold = Math.random();
-          const c = gold < 0.55 ? [1, 0.75, 0.3] : gold < 0.85 ? [1, 0.95, 0.85] : [1, 0.5, 0.18];
-          P.spawn(top.x, top.y, top.z, Math.cos(a) * r, up, Math.sin(a) * r, c[0], c[1], c[2], rand(0.09, 0.15), rand(0.9, 1.6), 0.5, 9.8, F_EMBER | (Math.random() < 0.35 ? F_FLICKER : 0) | (Math.random() < 0.05 ? F_CRACKLE : 0)); }
-        glowAt(top, [1, 0.65, 0.28], 3.2 * k + Math.random() * 0.8);
-        if (Math.random() < 0.15) Smoke.puff(top.x, top.y + 0.5, top.z, 0.8, 0.22, 3.5);
-      }, () => removeLater(g, 1.5));
+        const surge = 0.85 + 0.25 * Math.sin(t * 7 + Math.sin(t * 2.3) * 3);
+        const k = Math.min(1, t / 0.5) * (t > D - 0.8 ? (D - t) / 0.8 : 1) * surge;
+        acc += 300 * Q.fx * k * dt;
+        while (acc >= 1) {
+          acc--; const a = Math.random() * 6.283, rr = Math.pow(Math.random(), 1.4) * 2.6, upv = rand(9, 15) * H * (0.6 + 0.4 * k);
+          const c = style === 'silver' ? (Math.random() < 0.7 ? [0.95, 0.95, 1] : [1, 0.85, 0.6]) : (Math.random() < 0.6 ? [1, 0.75, 0.3] : [1, 0.95, 0.85]);
+          const i = P.spawn(top.x, top.y, top.z, Math.cos(a) * rr, upv, Math.sin(a) * rr, c[0], c[1], c[2], rand(0.09, 0.16), rand(0.9, 1.6), 0.5, 9.8, F_EMBER | (Math.random() < 0.35 ? F_FLICKER : 0) | (Math.random() < 0.07 ? F_CRACKLE : 0));
+          if (style === 'rainbow' && Math.random() < 0.5) { const tc = pick(tips); P.setAlt(i, tc[0], tc[1], tc[2]); }
+        }
+        if (Math.random() < 0.7 * dt) for (let j = 0; j < 14; j++) P.spawn(top.x, top.y, top.z, rand(-2, 2), rand(8, 13) * H, rand(-2, 2), 1, 0.95, 0.8, 0.12, rand(0.7, 1.1), 0.6, 9.8, F_CRACKLE | F_FLICKER);
+        glowAt(top, style === 'silver' ? [0.85, 0.85, 1] : [1, 0.65, 0.28], 3.4 * k + Math.random() * 0.8);
+        if (Math.random() < 0.18) Smoke.puff(top.x, top.y + 0.5, top.z, 0.8, 0.22, 3.5);
+      }, () => { for (let j = 0; j < 20; j++) { randDir(_d); P.spawn(top.x, top.y, top.z, _d.x * 3, Math.abs(_d.y) * 4, _d.z * 3, 1, 0.8, 0.4, 0.08, rand(0.2, 0.4), 2, 6, 0); } sfx.pop(0.3, pan); Smoke.puff(top.x, 0.8, top.z, 1, 0.35, 3); removeLater(g, 1.5); });
     });
   },
-  chakri(p) {
-    const g = spawnModel('chakri', p); const v = new V3(rand(-0.4, 0.4), 0, rand(-0.4, 0.4));
-    fuse(new V3(p.x, 0.14, p.z), 0.6, () => {
-      const D = 4.2; let ang = 0, acc = 0; sfx.whirr(D);
+  chakri(p) { // ground spinner: random spin direction and colours, wanders, bounces off the kerb, sometimes hops
+    const g = spawnModel('chakri', p); const v = new V3(rand(-0.7, 0.7), 0, rand(-0.7, 0.7)), pan = panOf(p);
+    const spin = Math.random() < 0.5 ? 1 : -1, D = rand(3.6, 4.8);
+    const palette = pick([[[1, 0.8, 0.35], [0.55, 1, 0.4]], [[1, 0.8, 0.35], [1, 0.35, 0.3]], [[0.95, 0.95, 1], [0.4, 0.8, 1]], [[1, 0.6, 0.2], [1, 0.4, 0.9]]]);
+    fuse(new V3(p.x, 0.14, p.z), 0.22, () => {
+      let ang = 0, acc = 0, hop = 0; sfx.whirr(D, pan);
       during(D, (dt, t) => {
-        const k = Math.min(1, t / 0.4) * (t > D - 0.6 ? (D - t) / 0.6 : 1); ang += 28 * k * dt; g.rotation.y = -ang;
-        g.position.addScaledVector(v, dt); v.x += rand(-1, 1) * dt; v.z += rand(-1, 1) * dt; g.position.x = clamp(g.position.x, -6.2, 6.2);
-        const phase = Math.floor(t / 1.1) % 2, col = phase ? [0.55, 1, 0.4] : [1, 0.8, 0.35];
-        acc += 220 * k * dt;
-        while (acc >= 1) { acc--; const a = ang + Math.random() * 0.6; const cx = Math.cos(a), sz = Math.sin(a), s = rand(4, 7.5);
-          P.spawn(g.position.x + cx * 0.3, 0.12, g.position.z + sz * 0.3, -sz * s + cx, rand(0.3, 2.2), cx * s + sz, col[0], col[1], col[2], 0.09, rand(0.35, 0.7), 1.6, 4, F_EMBER | F_FLICKER); }
-        glowAt(g.position, col, 2.4 * k);
-        if (Math.random() < 0.1) Smoke.puff(g.position.x, 0.3, g.position.z, 0.6, 0.2, 2.5);
-      }, () => removeLater(g, 1.2));
+        const k = Math.min(1, t / 0.35) * (t > D - 0.6 ? (D - t) / 0.6 : 1); ang += 32 * k * dt * spin; g.rotation.y = -ang;
+        g.position.addScaledVector(v, dt); v.x += rand(-1.6, 1.6) * dt; v.z += rand(-1.6, 1.6) * dt;
+        if (Math.abs(g.position.x) > 6) { v.x *= -0.8; g.position.x = clamp(g.position.x, -6, 6); }
+        g.position.z = clamp(g.position.z, -24, 5);
+        if (hop <= 0 && Math.random() < 0.3 * dt) hop = 0.45;
+        if (hop > 0) { hop -= dt; g.position.y = Math.sin((1 - hop / 0.45) * Math.PI) * 0.55; } else g.position.y = 0;
+        const col = palette[Math.floor(t / 0.9) % 2], y = 0.12 + g.position.y;
+        acc += 270 * Q.fx * k * dt;
+        while (acc >= 1) { acc--; const a = ang + Math.random() * 0.6; const cx = Math.cos(a), sz = Math.sin(a), s = rand(4, 8);
+          P.spawn(g.position.x + cx * 0.3, y, g.position.z + sz * 0.3, (-sz * s + cx) * spin, rand(0.3, 2.4), (cx * s + sz) * spin, col[0], col[1], col[2], 0.09, rand(0.35, 0.7), 1.6, 4, F_EMBER | F_FLICKER); }
+        glowAt(g.position, col, 2.6 * k);
+        if (Math.random() < 0.12) Smoke.puff(g.position.x, 0.3, g.position.z, 0.6, 0.2, 2.5);
+      }, () => { sfx.pop(0.35, pan); Smoke.puff(g.position.x, 0.4, g.position.z, 0.8, 0.35, 2.5); removeLater(g, 1); });
     });
   },
-  phuljhari(p, screen) {
-    sparkler.start(screen);
+  phuljhari(p, screen) { sparkler.start(screen); },
+  laxmi(p) { // bomb: the spark crawls down the fuse; now and then it fizzles... and then goes off anyway
+    const g = spawnModel('laxmi', p); const pan = panOf(p), dud = Math.random() < 0.12;
+    fuse(new V3(p.x, 0.66, p.z), 0.6, () => {
+      if (!dud) { scene.remove(g); explode(p, rand(0.9, 1.15), [0.85, 0.12, 0.12], pan); return; }
+      showHint('…is it a dud?'); sfx.hiss(1.4, 0.04, 3000, pan);
+      during(1.4, () => { if (Math.random() < 0.3) Smoke.puff(p.x, 0.5, p.z, 0.3, 0.25, 2); if (Math.random() < 0.2) P.spawn(p.x, 0.5, p.z, rand(-0.3, 0.3), rand(0.3, 1), rand(-0.3, 0.3), 1, 0.4, 0.1, 0.07, 0.4, 1, 0, 0); },
+        () => { scene.remove(g); explode(p, 1.35, [0.85, 0.12, 0.12], pan); updateHint(); });
+    }, new V3(p.x, 0.48, p.z));
   },
-  laxmi(p) {
-    const g = spawnModel('laxmi', p);
-    fuse(new V3(p.x, 0.62, p.z), 1.5, () => { scene.remove(g); explode(p, 1, [0.85, 0.12, 0.12]); });
+  hydrogen(p) { // mega bomb: a longer fuse, then a blast that shakes the lanterns, flashes every window and rolls like thunder
+    const g = spawnModel('hydrogen', p); const pan = panOf(p);
+    fuse(new V3(p.x, 0.64, p.z), 0.95, () => {
+      scene.remove(g); explode(p, rand(1.6, 1.9), [0.15, 0.7, 0.25], pan);
+      after(0.1, () => shockwave(p, 16, 0xffd28a, 0.9)); after(0.22, () => shockwave(p, 24, 0xff9a4a, 1.2));
+      for (let k = 0; k < 60 * Q.fx; k++) { randDir(_d); _d.y = Math.abs(_d.y) * 1.6 + 0.4; _d.normalize(); const s = rand(12, 20); P.spawn(p.x, 0.5, p.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.78, 0.35, 0.13, rand(1.4, 2.2), 1.2, 9, F_TRAIL | F_EMBER | (Math.random() < 0.3 ? F_CRACKLE : 0)); }
+      windGust(2); windowFlash = 1; lampBoost(1); sfx.thunder(1.2, pan);
+    }, new V3(p.x, 0.44, p.z));
   },
-  hydrogen(p) {
-    const g = spawnModel('hydrogen', p);
-    fuse(new V3(p.x, 0.62, p.z), 2.1, () => { scene.remove(g); explode(p, 1.7, [0.15, 0.7, 0.25]); after(0.12, () => shockwave(p, 14, 0xffd28a, 0.9)); });
-  },
-  ladi(p) {
-    const start = new V3(clamp(p.x, -3.2, 3.2), 0, p.z); const g = spawnModel('ladi', start, 0); const bits = g.userData.bits;
-    fuse(new V3(start.x - 3, 0.1, start.z), 0.7, () => {
+  ladi(p) { // cracker chain: pops in random bursts, the chain jumps as it goes, now and then a fat one, paper fluttering down
+    const start = new V3(clamp(p.x, -3, 3), 0, p.z); const g = spawnModel('ladi', start, rand(-0.3, 0.3)); const bits = g.userData.bits, pan = panOf(p);
+    fuse(new V3(start.x - 3, 0.1, start.z), 0.2, () => {
       let i = 0;
       const next = () => {
         if (i >= bits.length) { scene.remove(g); return; }
         const b = bits[i++]; b.visible = false; const wp = new V3(); b.getWorldPosition(wp);
-        for (let k = 0; k < 14; k++) { randDir(_d); P.spawn(wp.x, wp.y + 0.1, wp.z, _d.x * 6, Math.abs(_d.y) * 5, _d.z * 6, 1, 0.92, 0.7, 0.1, rand(0.08, 0.2), 4, 0, 0); }
-        for (let k = 0; k < 5; k++) P.spawn(wp.x, wp.y + 0.1, wp.z, rand(-2, 2), rand(1, 4), rand(-2, 2), 0.7, 0.06, 0.06, 0.07, rand(1.2, 2), 2.5, 3, 0);
+        for (let j = i; j < Math.min(bits.length, i + 4); j++) { bits[j].position.y = 0.06 + rand(0, 0.2); bits[j].rotation.y = rand(-0.7, 0.7); }
+        const big = Math.random() < 0.1;
+        for (let k = 0; k < (big ? 30 : 14); k++) { randDir(_d); P.spawn(wp.x, wp.y + 0.1, wp.z, _d.x * 6, Math.abs(_d.y) * 5, _d.z * 6, 1, 0.92, 0.7, 0.1, rand(0.08, 0.22), 4, 0, 0); }
+        for (let k = 0; k < (big ? 10 : 5); k++) P.spawn(wp.x, wp.y + 0.1, wp.z, rand(-2, 2), rand(2, 5), rand(-2, 2), rand(0.6, 0.85), 0.06, 0.06, 0.07, rand(2, 3.5), 3, 2.5, F_FLUTTER);
         if (Math.random() < 0.5) Smoke.puff(wp.x, 0.3, wp.z, 0.6, 0.3, 3);
-        glowAt(wp, [1, 0.85, 0.6], 4); sfx.pop(rand(0.4, 0.75)); addShake(0.04);
-        after(rand(0.03, 0.08), next);
+        glowAt(wp, [1, 0.85, 0.6], big ? 7 : 4); sfx.pop(rand(0.4, 0.8) * (big ? 1.5 : 1), pan); addShake(big ? 0.12 : 0.035); if (big) lampBoost(0.1);
+        after(Math.random() < 0.15 ? rand(0.12, 0.22) : rand(0.025, 0.07), next);
       };
       next();
     });
   },
-  skyshot(p) {
-    const g = spawnModel('skyshot', p); const mouth = new V3(p.x, 0.6, p.z);
-    fuse(mouth, 1, () => {
-      const seq = ['peony', 'ring', 'chrys', 'strobe', 'double', 'willow', 'crossette', 'heart', 'peony', 'palm', 'ring', 'double'];
-      seq.forEach((pat, i) => after(i * 0.42, () => {
-        for (let k = 0; k < 18; k++) P.spawn(mouth.x, mouth.y, mouth.z, rand(-1.5, 1.5), rand(2, 6), rand(-1.5, 1.5), 1, 0.8, 0.4, 0.1, rand(0.2, 0.4), 2, 6, F_EMBER);
-        glowAt(mouth, [1, 0.7, 0.3], 3); Smoke.puff(mouth.x, 1, mouth.z, 1, 0.3, 3);
-        const tt = rand(1.05, 1.3); shell(mouth, { vy: rand(20, 24), vx: rand(-4, 4), vz: (rand(-52, -40) - mouth.z) / tt, time: tt, pattern: pat, color: pick(SHELL_COLORS), scale: i === 11 ? 1.3 : 0.85 });
-      }));
-      removeLater(g, 12 * 0.42 + 3);
+  skyshot(p) { // sky shot: 12 tubes fire in random order, the box kicks each time, the last three go together
+    const g = spawnModel('skyshot', p); const tubes = g.userData.tubes, pan = panOf(p);
+    const theme = pick(['mixed', 'gold', 'mixed', 'neon']), order = tubes.map((_, i) => i).sort(() => Math.random() - 0.5);
+    fuse(new V3(p.x, 0.62, p.z), 0.35, () => {
+      for (let i = 0; i < 12; i++) {
+        const fin = i >= 9, at = fin ? 9 * 0.36 + (i - 9) * 0.07 : i * 0.36 + rand(-0.04, 0.06);
+        after(at, () => {
+          const tw = new V3(); tubes[order[i]].getWorldPosition(tw); tw.y += 0.05;
+          for (let k = 0; k < 20; k++) P.spawn(tw.x, tw.y, tw.z, rand(-1.5, 1.5), rand(2, 7), rand(-1.5, 1.5), 1, 0.8, 0.4, 0.1, rand(0.2, 0.4), 2, 6, F_EMBER);
+          glowAt(tw, [1, 0.7, 0.3], 3.5); Smoke.puff(tw.x, 1, tw.z, 1, 0.3, 3); sfx.mortar(pan);
+          g.position.y = -0.05; g.rotation.z = rand(-0.06, 0.06); after(0.07, () => { g.position.y = 0; });
+          const tt = rand(1.0, 1.3);
+          const color = theme === 'gold' ? pick(['gold', 'saffron', 'silver']) : theme === 'neon' ? pick(['aqua', 'magenta', 'lime', 'violet']) : pick(SHELL_COLORS);
+          shell(tw, { vy: rand(19, 24), vx: rand(-4.5, 4.5), vz: (rand(-54, -40) - tw.z) / tt, time: tt, pattern: theme === 'gold' ? pick(['willow', 'kamuro', 'palm', 'strobe']) : undefined, color, scale: fin ? 1.25 : rand(0.75, 0.95), pan, thump: false });
+        });
+      }
+      removeLater(g, 9 * 0.36 + 5);
     });
   },
-  pencil(p) {
-    const g = spawnModel('pencil', p); const tip = new V3(p.x, 0.92, p.z);
-    fuse(tip, 0.5, () => {
-      const cols = [PAL.ruby, PAL.emerald, PAL.gold, PAL.violet, PAL.peacock], D = 5; let acc = 0; sfx.hiss(D, 0.08, 6000); sfx.crackle(D, 14, 0.08);
+  pencil(p) { // colour pencil: burns down as it goes, colours in a random order, a little flourish at each change
+    const g = spawnModel('pencil', p); const stick = g.userData.stick, pan = panOf(p);
+    const cols = [PAL.ruby, PAL.emerald, PAL.gold, PAL.violet, PAL.aqua, PAL.magenta].sort(() => Math.random() - 0.5), D = rand(4.2, 5.6), beat = rand(0.7, 1.1);
+    const tip = new V3();
+    fuse(new V3(p.x, 0.92, p.z), 0.18, () => {
+      let acc = 0, lastCi = -1; sfx.hiss(D, 0.08, 6000, pan); sfx.crackle(D, 14, 0.08, pan);
       during(D, (dt, t) => {
-        const c = cols[Math.floor(t / 1) % cols.length]; acc += 70 * dt;
-        while (acc >= 1) { acc--; P.spawn(tip.x, tip.y, tip.z, rand(-1.2, 1.2), rand(3, 6.5), rand(-1.2, 1.2), c[0], c[1], c[2], 0.12, rand(0.6, 1.0), 1, 5, F_FLICKER); }
-        glowAt(tip, c, 2.2);
-      }, () => removeLater(g, 1));
+        const left = 1 - t / D; stick.scale.y = 0.25 + 0.75 * left; stick.position.y = 0.45 * stick.scale.y; tip.set(p.x, 0.9 * stick.scale.y + 0.03, p.z);
+        const ci = Math.floor(t / beat) % cols.length, c = cols[ci];
+        if (ci !== lastCi) { lastCi = ci; for (let k = 0; k < 18; k++) { randDir(_d); _d.y = Math.abs(_d.y); P.spawn(tip.x, tip.y, tip.z, _d.x * 4, _d.y * 5, _d.z * 4, c[0], c[1], c[2], 0.12, rand(0.4, 0.7), 1.2, 4, F_FLICKER); } }
+        acc += 80 * dt;
+        while (acc >= 1) { acc--; P.spawn(tip.x, tip.y, tip.z, rand(-1.3, 1.3), rand(3, 7), rand(-1.3, 1.3), c[0], c[1], c[2], 0.12, rand(0.6, 1.0), 1, 5, F_FLICKER | (Math.random() < 0.15 ? F_TRAIL : 0)); }
+        glowAt(tip, c, 2.4);
+      }, () => { sfx.pop(0.3, pan); removeLater(g, 1); });
     });
   },
-  snake(p) {
-    const g = spawnModel('snake', p);
-    fuse(new V3(p.x, 0.08, p.z), 0.5, () => {
-      const D = 6, head = new V3(p.x, 0.08, p.z); let yaw = Math.random() * 6.28, h = 0, acc = 0; sfx.hiss(D, 0.05, 2500);
+  snake(p) { // snake tablet: an ember head crawls and curls, the ash cools from orange to grey, sometimes it forks in two
+    const g = spawnModel('snake', p); const pan = panOf(p);
+    fuse(new V3(p.x, 0.08, p.z), 0.18, () => {
+      const D = rand(5, 7), heads = [{ x: p.x, y: 0.08, z: p.z, yaw: Math.random() * 6.28, h: 0, curl: rand(-0.5, 0.9) }]; let acc = 0, forked = false; sfx.hiss(D, 0.05, 2500, pan);
       during(D, (dt, t) => {
+        if (!forked && t > D * 0.4) { forked = true; if (Math.random() < 0.3) { const h0 = heads[0]; heads.push({ ...h0, yaw: h0.yaw + 1.6, curl: -h0.curl }); } }
         acc += 26 * dt;
         while (acc >= 1 && snakeSegs.length < SNAKE_MAX) {
-          acc--; yaw += rand(-0.6, 0.9); const rise = t < 2.2 ? 0.035 : -0.012; h = clamp(h + rise, 0, 0.75);
-          head.x += Math.cos(yaw) * 0.045; head.z += Math.sin(yaw) * 0.045; head.y = 0.08 + h;
-          snakeSegs.push({ x: head.x, y: head.y, z: head.z, r: rand(0.07, 0.1) * (0.7 + Math.min(1, t / 2) * 0.5), life: 14 });
-          if (Math.random() < 0.4) P.spawn(head.x, head.y, head.z, rand(-0.2, 0.2), rand(0.2, 0.6), rand(-0.2, 0.2), 1, 0.45, 0.12, 0.08, rand(0.2, 0.4), 1, 0, 0);
+          acc--;
+          for (const hd of heads) {
+            hd.yaw += rand(-0.5, 0.5) + hd.curl * 0.25; hd.h = clamp(hd.h + (t < D * 0.35 ? 0.035 : -0.012), 0, 0.8);
+            hd.x += Math.cos(hd.yaw) * 0.045; hd.z += Math.sin(hd.yaw) * 0.045; hd.y = 0.08 + hd.h;
+            snakeSegs.push({ x: hd.x, y: hd.y, z: hd.z, r: rand(0.07, 0.1) * (0.7 + Math.min(1, t / 2) * 0.5), life: 14, born: time });
+            if (Math.random() < 0.4) P.spawn(hd.x, hd.y, hd.z, rand(-0.2, 0.2), rand(0.2, 0.6), rand(-0.2, 0.2), 1, 0.45, 0.12, 0.08, rand(0.2, 0.4), 1, 0, 0);
+          }
         }
-        if (Math.random() < 0.35) Smoke.puff(head.x, head.y + 0.1, head.z, 0.5, 0.35, 3);
-        glowAt(head, [1, 0.4, 0.12], 0.6);
+        for (const hd of heads) if (Math.random() < 0.35) Smoke.puff(hd.x, hd.y + 0.1, hd.z, 0.5, 0.35, 3);
+        glowAt(heads[0], [1, 0.4, 0.12], 0.8);
       }, () => removeLater(g, 0.2));
     });
   },
-  machis(p) {
-    const g = spawnModel('machis', p); const cols = [PAL.ruby, PAL.emerald, PAL.violet, PAL.gold, PAL.peacock, PAL.magenta];
-    cols.forEach((c, i) => after(0.15 + i * 0.42, () => {
-      sfx.strike(); const fp = new V3(p.x + (i - 2.5) * 0.24, 0.35, p.z + rand(-0.15, 0.15));
-      for (let k = 0; k < 16; k++) { randDir(_d); P.spawn(fp.x, fp.y, fp.z, _d.x * 3, _d.y * 3, _d.z * 3, 1, 0.9, 0.7, 0.07, rand(0.1, 0.25), 2, 2, 0); }
-      during(1.7, () => { for (let k = 0; k < 3; k++) P.spawn(fp.x + rand(-0.03, 0.03), fp.y, fp.z + rand(-0.03, 0.03), rand(-0.15, 0.15), rand(0.5, 1.2), rand(-0.15, 0.15), c[0], c[1], c[2], 0.2, rand(0.25, 0.45), 1.5, -0.5, 0); glowAt(fp, c, 1.8); });
-    }));
-    removeLater(g, 3.6);
+  machis(p) { // colour matches: six sticks struck one by one, flames sway and the sticks burn down
+    const g = spawnModel('machis', p); const sticks = g.userData.sticks, pan = panOf(p);
+    const cols = [PAL.ruby, PAL.emerald, PAL.violet, PAL.gold, PAL.aqua, PAL.magenta].sort(() => Math.random() - 0.5);
+    let at = 0.06;
+    sticks.forEach((st, i) => { at += rand(0.22, 0.4); after(at, () => {
+      sfx.strike(pan); const head = new V3(); st.userData.head.getWorldPosition(head); st.userData.head.visible = false;
+      for (let k = 0; k < 18; k++) { randDir(_d); P.spawn(head.x, head.y, head.z, _d.x * 3, _d.y * 3, _d.z * 3, 1, 0.9, 0.7, 0.07, rand(0.1, 0.25), 2, 2, 0); }
+      const c = cols[i], L = rand(1.4, 2.0), fp = new V3();
+      during(L, (dt, t) => {
+        st.scale.y = 0.3 + 0.7 * (1 - t / L); st.userData.head.getWorldPosition(fp); fp.x += Math.sin(time * 9 + i) * 0.03;
+        for (let k = 0; k < 3; k++) P.spawn(fp.x + rand(-0.03, 0.03), fp.y, fp.z + rand(-0.03, 0.03), rand(-0.15, 0.15) + Math.sin(time * 5 + i) * 0.2, rand(0.5, 1.2), rand(-0.15, 0.15), c[0], c[1], c[2], 0.2 * (0.6 + 0.4 * (1 - t / L)), rand(0.25, 0.45), 1.5, -0.5, F_FLICKER);
+        glowAt(fp, c, 2);
+      }, () => Smoke.puff(head.x, head.y, head.z, 0.25, 0.3, 2));
+    }); });
+    removeLater(g, at + 2.2);
   },
-  tikli(p) {
-    const g = spawnModel('tikli', p, Math.PI / 2 + rand(-0.4, 0.4)); const muzzle = new V3(p.x, 0.15, p.z + 0.25);
-    for (let i = 0; i < 10; i++) after(0.1 + i * 0.17 + (i % 3 === 2 ? 0.1 : 0), () => {
-      sfx.snap(); for (let k = 0; k < 8; k++) { randDir(_d); P.spawn(muzzle.x, muzzle.y, muzzle.z, _d.x * 2.5, Math.abs(_d.y) * 2.5, _d.z * 2.5, 1, 0.95, 0.85, 0.06, rand(0.05, 0.12), 3, 0, 0); }
-      Smoke.puff(muzzle.x, muzzle.y + 0.1, muzzle.z, 0.3, 0.3, 1.8); glowAt(muzzle, [1, 0.9, 0.7], 1.5);
-    });
-    removeLater(g, 2.6);
+  tikli(p) { // cap gun: trigger-happy bursts with pauses, the gun kicks back, then click... out of caps
+    const g = spawnModel('tikli', p, Math.PI / 2 + rand(-0.5, 0.5)); const gun = g.userData.gun, pan = panOf(p), n = 8 + ((Math.random() * 7) | 0);
+    let at = 0.04;
+    for (let i = 0; i < n; i++) {
+      at += Math.random() < 0.2 ? rand(0.25, 0.4) : rand(0.09, 0.16);
+      after(at, () => {
+        const m = new V3(); g.userData.muzzle.getWorldPosition(m); sfx.snap(pan);
+        for (let k = 0; k < 10; k++) { randDir(_d); P.spawn(m.x, m.y, m.z, _d.x * 2.5, Math.abs(_d.y) * 2.5, _d.z * 2.5, 1, 0.95, 0.85, 0.06, rand(0.05, 0.12), 3, 0, 0); }
+        P.spawn(m.x, m.y, m.z, 0, 0, 0, 1, 0.95, 0.8, 0.35, 0.06, 0, 0, 0);
+        Smoke.puff(m.x, m.y + 0.1, m.z, 0.3, 0.3, 1.8); glowAt(m, [1, 0.9, 0.7], 1.6);
+        during(0.12, (dt, t) => { gun.rotation.z = 0.4 * (1 - t / 0.12); });
+      });
+    }
+    after(at + 0.3, () => sfx.click(pan));
+    removeLater(g, at + 1);
   },
 };
-function explode(p, power, paper) {
+function explode(p, power, paper, pan = 0) {
   const c = new V3(p.x, 0.35, p.z);
   for (let k = 0, m = 200 * Q.fx * power; k < m; k++) { randDir(_d); _d.y = Math.abs(_d.y) * 0.7; const s = rand(10, 20) * power; P.spawn(c.x, c.y, c.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.93, 0.75, 0.13, rand(0.15, 0.4), 4, 2, 0); }
-  for (let k = 0; k < 60 * power; k++) P.spawn(c.x, c.y, c.z, rand(-6, 6), rand(2, 9), rand(-6, 6), paper[0], paper[1], paper[2], 0.08, rand(1.8, 3), 2.4, 3.5, 0);
+  for (let k = 0; k < 40 * power; k++) { const a = Math.random() * 6.283, s = rand(14, 22) * power; P.spawn(c.x, 0.1, c.z, Math.cos(a) * s, rand(0, 0.6), Math.sin(a) * s, 1, 0.85, 0.55, 0.09, rand(0.2, 0.45), 3, 0, F_FLICKER); }
+  for (let k = 0; k < 60 * power; k++) P.spawn(c.x, c.y, c.z, rand(-6, 6), rand(3, 10), rand(-6, 6), paper[0] * rand(0.8, 1.1), paper[1] * rand(0.8, 1.1), paper[2] * rand(0.8, 1.1), 0.08, rand(2.5, 4), 2.6, 2.2, F_FLUTTER);
+  for (let k = 0; k < 12 * power; k++) { randDir(_d); _d.y = Math.abs(_d.y) + 0.3; const s = rand(6, 12); P.spawn(c.x, c.y, c.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.6, 0.2, 0.09, rand(0.8, 1.4), 1, 9, F_TRAIL | F_EMBER); }
   for (let k = 0; k < 14 * power; k++) Smoke.puff(c.x + rand(-1, 1) * power, c.y + rand(0, 1.2) * power, c.z + rand(-1, 1) * power, 1.6 * power, 0.45, 4.5);
+  for (let k = 0; k < 4; k++) after(0.1 + k * 0.12, () => Smoke.puff(c.x + rand(-0.4, 0.4), 1 + k * 0.9 * power, c.z, 1.4 * power, 0.35, 5)); // a little mushroom of smoke
   glowAt(c, [1, 0.9, 0.7], 14 * power); screenFlash(c, 0.55 * power); vibrate(power > 1.2 ? [40, 30, 70] : 45); shockwave(c, 7 * power); addShake(0.55 * power);
-  sfx.boom(Math.min(1.4, power));
+  lampBoost(0.3 * power); windGust(0.6 * power); scorch(c, 0.75 * power);
+  sfx.boom(Math.min(1.5, power), 0, 0, pan);
 }
 
 /* ---------- sparkler drawing ---------- */
@@ -1414,15 +1587,20 @@ const sparkler = (() => {
 })();
 
 /* ================= ambient: the neighbours' fireworks far away ================= */
-let ambientTimer = 2;
-function ambientShell() {
+let ambientTimer = 2, heat = 0;
+function ambientShell(near = false) {
+  if (near) { // a neighbour on a rooftop answers with a shell of their own
+    const side = Math.random() < 0.5 ? -1 : 1, from = new V3(side * rand(9, 14), rand(9, 12), rand(-30, -6)), tt = rand(1, 1.2);
+    shell(from, { vy: rand(15, 19), vx: -side * rand(1, 3), vz: (rand(-50, -38) - from.z) / tt, time: tt, scale: rand(0.8, 1.05), pan: side * 0.6 });
+    return;
+  }
   const p = new V3(rand(-260, 260), rand(55, 110), rand(-200, -360));
   burst(p, pick(PATTERNS.filter((x) => x !== 'heart')), pick(SHELL_COLORS), rand(0.9, 1.3), true);
   const dist = p.length(); sfx.boom(0.45, dist / 340, clamp(dist / 500, 0, 0.9));
 }
 
 /* ================= game state ================= */
-const GOAL = 2000, ROUND = 60;
+const GOAL = 3000, ROUND = 60;
 let state = 'pre', introT = 0, streetT = 0, time = 0;
 let mode = 'timed', score = 0, timeLeft = ROUND, lit = 0, counts = {}, recent = [], lastLight = -10, combo = 0, finaleRunning = false;
 let selected = 'rocket';
@@ -1568,14 +1746,20 @@ function endRound(success) {
 function grandFinale(after_) {
   finaleRunning = true; sfx.chord();
   toast('Grand finale', hostName ? `${hostName} and the whole street say Happy Diwali! దీపావళి శుభాకాంక్షలు!` : 'The whole street joins in. Happy Diwali! దీపావళి శుభాకాంక్షలు!');
-  const N = Math.round(50 * Q.fx);
-  for (let i = 0; i < N; i++) after(i * 0.16 + rand(0, 0.1), () => {
-    const from = new V3(rand(-14, 14), 0.5, rand(-62, -44));
-    shell(from, { vy: rand(22, 28), vx: rand(-3, 3), vz: rand(-3, 0), time: rand(1.1, 1.45), scale: rand(0.9, 1.25), sound: i % 2 === 0 });
+  const N = Math.round(60 * Q.fx), T = N * 0.13;
+  // wave 1: fans of shells from both ends of the lane
+  for (let i = 0; i < N; i++) after(i * 0.13 + rand(0, 0.08), () => {
+    const sd = i % 2 ? 1 : -1, from = new V3(sd * rand(4, 16), 0.5, rand(-64, -44));
+    shell(from, { vy: rand(22, 28), vx: -sd * rand(0, 3), vz: rand(-3, 0), time: rand(1.1, 1.45), scale: rand(0.9, 1.3), sound: i % 2 === 0, pan: sd * 0.5 });
   });
-  for (let i = 0; i < 6; i++) after(N * 0.16 + 0.6 + i * 0.05, () => { const p = new V3(-20 + i * 8, rand(24, 30), -56); burst(p, 'willow', 'gold', 1.4); if (i % 2 === 0) sfx.boom(1, 0.05); });
-  after(N * 0.16 + 0.8, () => { const p = new V3(0, 21, -46); burst(p, 'heart', 'ruby', 1.4); });
-  after(N * 0.16 + 4.2, () => { finaleRunning = false; after_(); });
+  // wave 2: a row of flower pots down the street, and the neighbours on their roofs
+  after(0.8, () => { for (let k = 0; k < 6; k++) after(k * 0.12, () => FX.anar(new V3(-5 + k * 2, 0, -18 - (k % 2) * 3))); });
+  for (let k = 0; k < 8; k++) after(1.6 + k * 0.45, () => ambientShell(true));
+  // the crown: a canopy of hanging gold, a heart, then a silver salute and thunder
+  for (let i = 0; i < 7; i++) after(T + 0.5 + i * 0.05, () => { burst(new V3(-24 + i * 8, rand(24, 30), -58), pick(['kamuro', 'willow']), 'gold', 1.5); if (i % 2 === 0) sfx.boom(1.1, 0.05, 0, (i - 3) / 4); });
+  after(T + 1.1, () => { burst(new V3(0, 22, -48), 'heart', 'ruby', 1.5); lampBoost(1.2); windowFlash = 1; });
+  after(T + 1.9, () => { for (let k = 0; k < 5; k++) burst(new V3(rand(-15, 15), rand(18, 28), rand(-56, -42)), 'strobe', 'silver', 1.1); sfx.thunder(1.3, 0); addShake(0.4); });
+  after(T + 5.2, () => { finaleRunning = false; after_(); });
 }
 
 function addScore(id, p) {
@@ -1583,6 +1767,8 @@ function addScore(id, p) {
   const varied = !recent.includes(id); if (varied && recent.length >= 2) { pts = Math.round(pts * 1.5); label = 'New one ×1.5'; }
   if (time - lastLight < 2.2) { combo++; if (combo >= 2) { pts += Math.min(combo, 5) * 8; label = label ? label + ` · Combo ${combo}` : `Combo ${combo}`; } } else combo = 0;
   lastLight = time; recent.push(id); if (recent.length > 3) recent.shift();
+  heat += 1;
+  if (combo === 6 || combo === 12) { toast('The street answers', 'Your neighbours are joining in!'); for (let k = 0; k < (combo === 12 ? 6 : 3); k++) after(0.3 + k * 0.35, () => ambientShell(true)); }
   score += pts; lit++; counts[id] = (counts[id] || 0) + 1; setScoreUI(); floatText(p.clone().setY(1.6), `+${pts}`, label);
   if (score >= GOAL && !finaleRunning) {
     if (mode === 'timed') { state = 'finale'; grandFinale(() => endRound(true)); }
@@ -1604,12 +1790,12 @@ ghost.position.y = 0.12; ghost.visible = false; scene.add(ghost);
 let hoverPoint = null, mouseNdc = { x: 0, y: 0 }, mouseOnCanvas = false;
 function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 function nudgeCard(id) { const b = tray.querySelector(`[data-id="${id}"]`); if (!b) return; b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge'); }
-function lightAt(p, screen) {
+function lightAt(p, screen, quiet = false) {
   if (state !== 'play') return false;
   const until = cooldownUntil[selected] || 0;
-  if (time < until) { showHint(`${byId[selected].name} is getting ready… pick another`); nudgeCard(selected); return false; }
+  if (time < until) { if (!quiet) { showHint(`${byId[selected].name} is getting ready… pick another`); nudgeCard(selected); } return false; }
   cooldownUntil[selected] = time + byId[selected].cd;
-  if (selected !== 'phuljhari') shockwave(p, 0.9, 0xffb627, 0.35); // instant "got it" ring under your finger
+  if (selected !== 'phuljhari') { shockwave(p, 0.9, 0xffb627, 0.3); ignite(p); } // instant feedback the moment you touch
   FX[selected](p, screen);
   addScore(selected, p); vibrate(12);
   const tp = tipFor(selected); toast(tp.k, tp.tip);
@@ -1625,14 +1811,23 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   const p = streetPoint(e.clientX, e.clientY);
-  if (lightAt(p, { x: e.clientX, y: e.clientY }) && selected === 'phuljhari') { sparklerPointer = e.pointerId; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
+  const okLit = lightAt(p, { x: e.clientX, y: e.clientY });
+  if (okLit && selected === 'phuljhari') { sparklerPointer = e.pointerId; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
+  else if (selected !== 'phuljhari') { holds.set(e.pointerId, { x: e.clientX, y: e.clientY, next: time + Math.max(0.32, byId[selected].cd) }); try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
 });
+// hold your finger down (or the mouse button) to keep lighting; drag to move where they land
+const holds = new Map();
+function updateHolds() {
+  if (state !== 'play' || selected === 'phuljhari') { holds.clear(); return; }
+  for (const h of holds.values()) if (time >= h.next) { lightAt(streetPoint(h.x, h.y), { x: h.x, y: h.y }, true); h.next = time + Math.max(0.22, byId[selected].cd); }
+}
 canvas.addEventListener('pointermove', (e) => {
   if (e.pointerType === 'mouse') { mouseOnCanvas = true; mouseNdc.x = (e.clientX / innerWidth) * 2 - 1; mouseNdc.y = -(e.clientY / innerHeight) * 2 + 1; hoverPoint = streetPoint(e.clientX, e.clientY); }
   if (e.pointerId === sparklerPointer && sparkler.active) sparkler.move(e.clientX, e.clientY);
+  const h = holds.get(e.pointerId); if (h) { h.x = e.clientX; h.y = e.clientY; }
 });
 canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { mouseOnCanvas = false; hoverPoint = null; } });
-const up = (e) => { if (e.pointerId === sparklerPointer) { sparklerPointer = null; sparkler.up(); } };
+const up = (e) => { holds.delete(e.pointerId); if (e.pointerId === sparklerPointer) { sparklerPointer = null; sparkler.up(); } };
 canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 // iOS Safari: stop pinch and double-tap from zooming the page mid-game
@@ -1702,11 +1897,11 @@ function applyNight() {
   scene.fog.color.copy(skyU.uHorizon.value).multiplyScalar(0.75); scene.fog.density = lerp(0.0024, 0.0019, n);
   keyLerp('hemi', n, hemi.color); hemi.groundColor.setRGB(0.12, 0.08, 0.06); hemi.intensity = keyLerp('hi', n);
   sunLight.color.copy(skyU.uSunColor.value); sunLight.intensity = 0.9 * (1 - smooth(0.3, 0.6, n)); sunLight.position.copy(skyU.uSunDir.value).multiplyScalar(200);
-  fillL.intensity = fillR.intensity = 0.38 * clamp(night.lit, 0, 1);
+  fillL.intensity = fillR.intensity = 0.32 * clamp(night.lit, 0, 1);
   stars.material.uniforms.uOp.value = smooth(0.55, 1, n);
   lampMat.uniforms.uLit.value = night.lit;
   seattle.update(n, skyU.uZenith.value, skyU.uHorizon.value);
-  for (const m of windowLamp) m.emissiveIntensity = night.win * 0.6;
+  for (const m of windowLamp) m.emissiveIntensity = night.win * 0.6 + windowFlash * 0.35;
 }
 
 /* ================= adaptive resolution ================= */
@@ -1719,14 +1914,29 @@ function adaptQuality(dt) {
   const struggling = perf.ema > 24 && perf.jit > 2.5, smooth_ = perf.ema < 18;
   if (struggling) {
     perf.calm = 0;
-    if (DPR > 1) { DPR = Math.max(1, DPR - 0.25); renderer.setPixelRatio(DPR); renderer.setSize(viewW(), viewH(), false); updateScale(); }
+    if (bloomOn) bloomOn = false; // the glow goes first
+    else if (DPR > 1) { DPR = Math.max(1, DPR - 0.25); renderer.setPixelRatio(DPR); renderer.setSize(viewW(), viewH(), false); if (composer) { composer.setPixelRatio(DPR); composer.setSize(viewW(), viewH()); } updateScale(); }
     else if (Q.fx > 0.5) Q.fx = Math.max(0.5, Q.fx - 0.1);
   } else if (smooth_) {
     if (++perf.calm >= 4) { perf.calm = 0; const cap = Math.min(devicePixelRatio || 1, Q.maxDpr);
-      if (Q.fx < 1) Q.fx = Math.min(1, Q.fx + 0.05); else if (DPR < cap) { DPR = Math.min(cap, DPR + 0.25); renderer.setPixelRatio(DPR); renderer.setSize(viewW(), viewH(), false); updateScale(); } }
+      if (Q.fx < 1) Q.fx = Math.min(1, Q.fx + 0.05); else if (DPR < cap) { DPR = Math.min(cap, DPR + 0.25); renderer.setPixelRatio(DPR); renderer.setSize(viewW(), viewH(), false); if (composer) { composer.setPixelRatio(DPR); composer.setSize(viewW(), viewH()); } updateScale(); } }
   } else perf.calm = 0;
 }
 const par = { x: 0, y: 0 };
+// bloom: a soft glow around every lamp and spark, loaded after the page is up (tablets and computers)
+let composer = null, bloomPass = null, bloomOn = false;
+function loadScript(src) { return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); }); }
+(async () => {
+  if (TIER === 'phone') return;
+  const base = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
+  try {
+    for (const f of ['shaders/CopyShader.js', 'shaders/LuminosityHighPassShader.js', 'postprocessing/EffectComposer.js', 'postprocessing/RenderPass.js', 'postprocessing/ShaderPass.js', 'postprocessing/UnrealBloomPass.js']) await loadScript(base + f);
+    composer = new THREE.EffectComposer(renderer); composer.setPixelRatio(DPR); composer.setSize(viewW(), viewH());
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(viewW(), viewH()), 0.6, 0.45, 0.78); composer.addPass(bloomPass);
+    bloomOn = true;
+  } catch (e) { composer = null; bloomOn = false; }
+})();
 let fovTarget = 60;
 
 /* ================= main loop ================= */
@@ -1768,7 +1978,8 @@ function frame() {
   applyNight();
 
   // neighbours' fireworks
-  if (night.lit > 0.5) { ambientTimer -= dt; if (ambientTimer <= 0) { ambientShell(); ambientTimer = finaleRunning ? rand(0.4, 0.9) : rand(1.4, 3.8); } }
+  heat *= Math.pow(0.86, dt);
+  if (night.lit > 0.5) { ambientTimer -= dt; if (ambientTimer <= 0) { ambientShell(state === 'play' && Math.random() < Math.min(0.55, heat * 0.07)); ambientTimer = finaleRunning ? rand(0.4, 0.9) : rand(1.4, 3.8) / (1 + heat * 0.35); } }
 
   // camera + shake
   camera.position.copy(camPos);
@@ -1784,7 +1995,8 @@ function frame() {
   // snakes
   let n = 0;
   for (let i = snakeSegs.length - 1; i >= 0; i--) { const s = snakeSegs[i]; s.life -= dt; if (s.life <= 0) { snakeSegs.splice(i, 1); } }
-  for (const s of snakeSegs) { const r = s.r * Math.min(1, s.life / 2); _m4.compose(_p.set(s.x, s.y, s.z), _q.identity(), _s.set(r, r, r)); snakeMesh.setMatrixAt(n++, _m4); }
+  for (const s of snakeSegs) { const r = s.r * Math.min(1, s.life / 2); _m4.compose(_p.set(s.x, s.y, s.z), _q.identity(), _s.set(r, r, r)); const e = clamp((time - (s.born || 0)) / 1.4, 0, 1); _c.setRGB(lerp(1.0, 0.24, e), lerp(0.42, 0.21, e), lerp(0.1, 0.2, e)); snakeMesh.setColorAt(n, _c); snakeMesh.setMatrixAt(n++, _m4); }
+  if (snakeMesh.instanceColor) snakeMesh.instanceColor.needsUpdate = true;
   snakeMesh.count = n; snakeMesh.instanceMatrix.needsUpdate = true;
   // lights decay
   for (const l of flashLights) l.intensity *= Math.pow(0.002, dt);
@@ -1794,23 +2006,26 @@ function frame() {
   const glow = smooth(0, 0.5, night.lit);
   for (const L of lanterns) {
     if (L.flag) { L.mesh.scale.y = 1 + Math.sin(time * 6) * 0.08; continue; }
-    L.mesh.rotation.z = Math.sin(time * 1.3 + L.phase) * 0.12; L.mesh.rotation.y = time * 0.4 + L.phase;
+    L.mesh.rotation.z = Math.sin(time * (1.3 + wind) + L.phase) * (0.12 + wind * 0.22); L.mesh.rotation.y = time * 0.4 + L.phase;
     const f = 0.25 + glow * (0.75 + Math.sin(time * 5 + L.phase * 3) * 0.06); L.mesh.material.color.setRGB(L.col[0] * f, L.col[1] * f, L.col[2] * f);
   }
   beacon.material.color.setRGB(0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.sin(time * 2.2), 3), 0.05, 0.05); // soft pulse, not a hard blink
   lampMat.uniforms.uTime.value = time; stars.material.uniforms.uTime.value = time;
-  birds.update(dt);
+  birds.update(dt); updateHolds();
+  boost *= Math.pow(0.03, dt); wind *= Math.pow(0.4, dt); windowFlash *= Math.pow(0.02, dt); lampMat.uniforms.uBoost.value = boost;
+  for (let i = scorches.length - 1; i >= 0; i--) { const sc = scorches[i]; sc.t += dt; sc.m.material.opacity = 0.55 * Math.max(0, 1 - sc.t / 30); if (sc.t > 30) { scene.remove(sc.m); sc.m.material.dispose(); scorches.splice(i, 1); } }
+  if (bloomPass) bloomPass.strength = 0.6 + boost * 0.3;
   // tray cooldowns
   if (state === 'play' || state === 'finale') tray.querySelectorAll('.cracker').forEach((b) => { const c = byId[b.dataset.id], left = Math.max(0, (cooldownUntil[c.id] || 0) - time); b.style.setProperty('--cd', (left / c.cd).toFixed(3)); });
   // toast
   if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $('#toast').classList.add('hide'); }
 
-  renderer.render(scene, camera);
+  if (bloomOn && composer) composer.render(); else renderer.render(scene, camera);
 }
 applyNight();
 frame();
 
-function onResize() { const w = viewW(), h = viewH(); camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h, false); updateScale(); }
+function onResize() { const w = viewW(), h = viewH(); camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h, false); if (composer) { composer.setPixelRatio(DPR); composer.setSize(w, h); } updateScale(); }
 addEventListener('resize', onResize);
 addEventListener('orientationchange', () => setTimeout(onResize, 300)); // iOS reports the new size late
 if (window.visualViewport) visualViewport.addEventListener('resize', onResize);

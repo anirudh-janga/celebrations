@@ -160,3 +160,31 @@ As any guest, I want the animation to stay smooth, so that it never feels laggy.
 **E9. Festival hub**
 As a host, I want a home page that lists festival pages, so that future festivals can be added next to Diwali 2026.
 - Acceptance: root `index.html` links to `/diwali-2026/`.
+
+---
+
+## Epic F: Make it epic
+
+**F1. Instant response**
+As a player, I want a firework to react the moment I touch the street, so that it feels alive.
+- Acceptance: a spark flare, flash and fizz sound under the finger right away; fuses are 0.2–1 s; cooldowns are short; holding a finger down keeps lighting and dragging moves where they land; several fingers work at once.
+
+**F2. No two the same**
+As a player, I want every burst to be a little different, so that it never gets repetitive.
+- Acceptance: 15 shell types (peony, chrysanthemum, ring, saturn, willow, kamuro, palm, strobe, fish, dahlia, colour-change, double, crossette, heart); size, speed, star count and colour vary; random crackling tails, colour-changing stars, contrasting cores and occasional second breaks.
+
+**F3. Every firework has its own character**
+- Rocket: tilted bottle that rocks on launch, smoky trail, varied whistle; some swerve, some break twice.
+- Flower pot: gold, silver or colour-tipped; it surges and coughs crackling clumps, ends with a pop.
+- Ground spinner: random spin and colours, wanders, bounces off the kerb, sometimes hops.
+- Bomb: the spark crawls down the fuse; now and then a fake dud that goes off anyway.
+- Mega bomb: double shockwave, sparks raining back down, lanterns swing, windows flash, thunder rolls.
+- Cracker chain: random rhythm, the chain jumps, a few extra-loud pops, paper fluttering down.
+- Sky shot: 12 tubes fire in random order from a box that kicks; a themed set; a triple finale.
+- Colour pencil: burns down, random colour order, a flourish at each change.
+- Colour matches: six sticks struck one by one, swaying flames, sticks burn down.
+- Snake tablet: ember head, ash cools from orange to grey, sometimes forks into two snakes.
+- Cap gun: bursts with pauses, the gun kicks back, a final click when it's out of caps.
+
+**F4. Spectacle**
+- Acceptance: bloom glow on tablets and computers (turned off first if frames slow down); the whole city's lamps flare on big bursts; scorch marks fade on the road; stereo sound that follows the action, with an echo for big booms; neighbours join in from their rooftops the more you play; a three-wave grand finale.
