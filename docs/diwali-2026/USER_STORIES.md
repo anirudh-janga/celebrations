@@ -133,6 +133,22 @@ As a guest, I want to copy the link with my own name in it, so that I can forwar
 As a guest who is sensitive to motion, I want camera shake and flashes toned down, so that I can still enjoy it.
 - Acceptance: with `prefers-reduced-motion`, no screen shake and softer flashes.
 
-**E5. Festival hub**
+**E5. iPhone**
+As a guest on an iPhone, I want sound, taps and layout to just work, so that the experience feels native.
+- Acceptance: sound plays through the silent switch (`navigator.audioSession` "playback") and unlocks on the first tap; audio resumes after a call or app switch; pinch and double-tap don't zoom the page; long-press doesn't open a callout; two fingers can light two crackers at once; in landscape a compact tray, HUD and start card fit the short screen; safe-area insets clear the notch and home bar.
+
+**E6. iPad**
+As a guest on an iPad, I want full-quality effects and a layout that uses the big screen, so that it looks its best.
+- Acceptance: iPads are detected as tablets even though iPadOS reports a Mac; they get the full particle budget and antialiasing; larger tray cards; a full-screen button where the browser allows it.
+
+**E7. Desktop**
+As a guest on a computer, I want mouse and keyboard controls, so that I can play without a touchscreen.
+- Acceptance: a ring on the street shows where a click will land; keys 1–9, 0, −, = pick crackers (shown as badges on the cards); Space lights at the cursor; M mutes, I opens the almanac, F toggles full screen; the mouse wheel scrolls the tray; a gentle parallax follows the mouse.
+
+**E8. Smooth on every device**
+As any guest, I want the animation to stay smooth, so that it never feels laggy.
+- Acceptance: the page starts at a quality suited to the device, lowers resolution and then particle density when frames are slow and uneven, and raises them back when things calm down. A steady 30 fps cap (iOS Low Power Mode) is not mistaken for a slow device. Particle buffers aren't re-uploaded while nothing is alive.
+
+**E9. Festival hub**
 As a host, I want a home page that lists festival pages, so that future festivals can be added next to Diwali 2026.
 - Acceptance: root `index.html` links to `/diwali-2026/`.

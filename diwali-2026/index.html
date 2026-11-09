@@ -36,7 +36,10 @@ body {
   margin: 0; overflow: hidden; background: var(--night); color: var(--ivory);
   font-family: var(--font-body); font-size: 15px; line-height: 1.5;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; -webkit-text-size-adjust: 100%;
 }
+#drawer, #drawer * { -webkit-user-select: text; user-select: text; }
+body.playing #scene { cursor: crosshair; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
@@ -116,7 +119,11 @@ button { cursor: pointer; }
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 6px 4px;
   scrollbar-width: none; }
 #tray::-webkit-scrollbar { display: none; }
-@media (min-width: 1180px) { #tray { justify-content: center; } }
+.cracker:first-child { margin-left: auto; } .cracker:last-child { margin-right: auto; } /* centres the row when it fits, scrolls when it doesn't */
+.cracker kbd { position: absolute; top: 5px; left: 7px; font: 600 10px/1 var(--font-body); color: var(--muted); display: none; }
+body.kb .cracker kbd { display: block; }
+.cracker.nudge { animation: nudge .35s ease; }
+@keyframes nudge { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .cracker {
   position: relative; flex: 0 0 auto; width: 92px; scroll-snap-align: center; border-radius: 16px; padding: 8px 6px 8px;
   border: 1px solid var(--line); background: var(--panel-glass); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
@@ -142,8 +149,8 @@ button { cursor: pointer; }
 #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at var(--fx, 50%) var(--fy, 60%), rgba(255,246,220,.95), rgba(255,200,120,.35) 35%, transparent 70%); }
 
 /* ---------- modal cards (start / end) ---------- */
-.modal { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(5, 4, 16, .38); }
-.modal-card { width: min(480px, 100%); border-radius: 22px; padding: 24px 22px; background: var(--panel); border: 1px solid var(--line);
+.modal { position: fixed; inset: 0; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: rgba(5, 4, 16, .38); }
+.modal-card { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; width: min(480px, 100%); border-radius: 22px; padding: 24px 22px; background: var(--panel); border: 1px solid var(--line);
   display: grid; gap: 14px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.8), 0 0 60px -30px var(--marigold); }
 .modal-card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.1; text-wrap: balance; }
 .modal-card p { margin: 0; color: var(--ivory); opacity: .88; }
@@ -198,6 +205,27 @@ button { cursor: pointer; }
   #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 138px); font-size: 13px; }
   .cracker { width: 84px; }
 }
+/* tablets and desktops: roomier tray */
+@media (min-width: 900px) and (min-height: 640px) {
+  .cracker { width: 100px; } .cracker svg { width: 48px; height: 48px; } .cracker .nm { font-size: 14px; }
+  #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 160px); }
+}
+/* phones held sideways: short screens need a compact tray and cards that fit */
+@media (max-height: 500px) {
+  #trayWrap { gap: 2px; padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+  .cracker { width: 70px; padding: 5px 4px; border-radius: 12px; } .cracker svg { width: 28px; height: 28px; }
+  .cracker .lc { display: none; } .cracker .nm { font-size: 11.5px; }
+  #hint { font-size: 12px; }
+  #hud { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
+  .icon-btn { width: 36px; height: 36px; } .pill-btn { height: 36px; } .timer { font-size: 20px; }
+  #toast { bottom: auto; top: calc(max(8px, env(safe-area-inset-top, 0px)) + 50px); width: min(440px, calc(100% - 32px)); padding: 8px 12px; font-size: 13px; }
+  .center-card { gap: 8px; padding: 14px 18px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+  .center-card h2 { font-size: 24px; }
+  #titleCard .deva { font-size: min(13vw, 19vh); } #titleCard .latin { font-size: 22px; } #titleCard p { font-size: 15px; }
+  .modal-card { padding: 16px 18px; gap: 10px; } .modal-card h2 { font-size: 24px; } .steps { gap: 4px; } .steps li { font-size: 14px; }
+  .stat b { font-size: 20px; }
+  .btn { padding: 9px 16px; font-size: 15px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .reveal > * { animation-duration: .01s; }
   #drawer { transition: none; }
@@ -241,6 +269,9 @@ button { cursor: pointer; }
   </div>
   <div class="timer" id="timer" aria-label="Seconds left">60</div>
   <div class="hud-btns">
+    <button class="icon-btn" id="fsBtn" type="button" aria-label="Full screen" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
     <button class="pill-btn" id="newsBtn2" type="button" aria-label="Diwali 2026 in India">2026<span class="long"> in India</span></button>
     <button class="icon-btn" id="muteBtn" type="button" aria-label="Mute sound" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path id="muteWave" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/><path id="muteX" d="m16 9 6 6m0-6-6 6" style="display:none"/></svg>
@@ -263,7 +294,7 @@ button { cursor: pointer; }
     <h2>Light up the street</h2>
     <ol class="steps">
       <li><span class="n">1</span><span>Pick a cracker from the box at the bottom.</span></li>
-      <li><span class="n">2</span><span>Tap anywhere on the street to light it. With the phuljhari, drag to write in the air.</span></li>
+      <li><span class="n">2</span><span id="step2">Tap anywhere on the street to light it. With the phuljhari, drag to write in the air. Use two fingers to light two at once.</span></li>
       <li><span class="n">3</span><span>Mix it up for a variety bonus. Fill the Roshni meter in 60 seconds to set off the grand finale.</span></li>
     </ol>
     <div class="row">
@@ -406,7 +437,18 @@ button { cursor: pointer; }
 if (!window.THREE) { document.getElementById('preHead').textContent = 'The city could not load.'; document.getElementById('preBody').textContent = 'Check your connection and reload the page.'; return; }
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
-const isMobile = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
+// Device tier. iPadOS reports itself as a Mac, so touch points decide "touch", and screen size splits phone from tablet.
+const hasTouch = (navigator.maxTouchPoints || 0) > 1 || matchMedia('(pointer: coarse)').matches;
+const minScreen = Math.min(screen.width || innerWidth, screen.height || innerHeight);
+const TIER = hasTouch ? (minScreen < 600 ? 'phone' : 'tablet') : 'desktop';
+const isMobile = TIER === 'phone';
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const Q = { // starting quality; adapted at runtime from the measured frame rate
+  maxDpr: { phone: 2, tablet: 2, desktop: 2 }[TIER],
+  dpr: { phone: 1.75, tablet: 1.75, desktop: 2 }[TIER],
+  fx: { phone: 0.75, tablet: 0.95, desktop: 1 }[TIER],
+};
+document.body.classList.toggle('kb', !hasTouch);
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
@@ -437,15 +479,17 @@ if (/github\.io$/.test(location.hostname)) $('#hubLink').hidden = false;
 
 /* ================= renderer / scene ================= */
 const canvas = $('#scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, powerPreference: 'high-performance' });
-const DPR = Math.min(devicePixelRatio || 1, isMobile ? 1.75 : 2);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: TIER !== 'phone' || (devicePixelRatio || 1) < 2, powerPreference: 'high-performance' });
+let DPR = Math.min(devicePixelRatio || 1, Q.dpr);
+const viewW = () => canvas.clientWidth || innerWidth, viewH = () => canvas.clientHeight || innerHeight;
 renderer.setPixelRatio(DPR);
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(viewW(), viewH(), false);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2600);
+const camera = new THREE.PerspectiveCamera(60, viewW() / viewH(), 0.1, 2600);
 scene.fog = new THREE.FogExp2(0x000000, 0.0021);
 const pointScale = { value: 1 };
-function updateScale() { pointScale.value = (innerHeight * DPR) / (2 * Math.tan((camera.fov * Math.PI) / 360)); }
+function updateScale() { pointScale.value = (viewH() * DPR) / (2 * Math.tan((camera.fov * Math.PI) / 360)); if (starMat) starMat.uniforms.uDpr.value = DPR; }
+let starMat = null;
 updateScale();
 
 /* ---------- sky ---------- */
@@ -495,7 +539,7 @@ const stars = (() => {
       void main(){ vT = 0.6 + 0.4 * sin(uTime * 1.7 + aPhase * 7.0); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_PointSize = aSize * uDpr; }`,
     fragmentShader: `uniform float uOp; varying float vT; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vec3(0.85,0.88,1.0), (1.0 - d*2.0) * uOp * vT); }`,
   });
-  const p = new THREE.Points(g, m); p.renderOrder = -9; p.frustumCulled = false; scene.add(p); return p;
+  const p = new THREE.Points(g, m); p.renderOrder = -9; p.frustumCulled = false; scene.add(p); starMat = m; return p;
 })();
 
 /* ---------- lights ---------- */
@@ -582,7 +626,9 @@ const tallTex = windowTexture(7, 20, 0.35, 1);
 function bucket(tex, count) {
   const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0 });
   windowLamp.push(mat);
-  const mesh = new THREE.InstancedMesh(boxGeo(), mat, count); mesh.count = 0; mesh.userData.max = count; mesh.frustumCulled = false; city.add(mesh); return mesh;
+  const mesh = new THREE.InstancedMesh(boxGeo(), mat, count);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3).fill(1), 3); // r128 sizes this from .count, so allocate before zeroing it
+  mesh.count = 0; mesh.userData.max = count; mesh.frustumCulled = false; city.add(mesh); return mesh;
 }
 const houses = bucket(houseTex, 90), mids = bucket(midTex, 360), talls = bucket(tallTex, 200);
 const tankGeo = new THREE.CylinderGeometry(0.7, 0.7, 1.3, 10); tankGeo.translate(0, 0.65, 0);
@@ -604,7 +650,7 @@ for (const s of [-1, 1]) {
   while (z > -78) {
     const w = rand(5.5, 8), floors = 2 + ((Math.random() * 3) | 0), h = floors * 3.2 + 0.7, d = rand(8, 12);
     const zc = z - w / 2;
-    place(houses, s * (STREET_HALF + d / 2), zc, w - 0.25, h, d, pick(PASTELS));
+    place(houses, s * (STREET_HALF + d / 2), zc, d, h, w - 0.25, pick(PASTELS)); // x is depth, z is frontage
     // roof parapet diyas facing the street
     for (let q = zc - w / 2 + 0.35; q <= zc + w / 2 - 0.35; q += 0.6) addLamp(s * (STREET_HALF + 0.15), h + 0.14, q, 0.6, DIYA, 0);
     for (let f = 1; f < floors; f++) if (Math.random() < 0.65) {
@@ -765,7 +811,7 @@ const lampMat = new THREE.ShaderMaterial({
 /* ================= particles (fireworks) ================= */
 const F_FLICKER = 1, F_TRAIL = 2, F_EMBER = 4, F_SPLIT = 8, F_CRACKLE = 16, F_INK = 32;
 const P = (() => {
-  const N = isMobile ? 9000 : 16000;
+  const N = { phone: 11000, tablet: 15000, desktop: 16000 }[TIER];
   const pos = new Float32Array(N * 3), vel = new Float32Array(N * 3), col = new Float32Array(N * 3), base = new Float32Array(N * 3);
   const size = new Float32Array(N), bsize = new Float32Array(N), alpha = new Float32Array(N), life = new Float32Array(N), maxLife = new Float32Array(N);
   const drag = new Float32Array(N), grav = new Float32Array(N), flags = new Uint8Array(N);
@@ -792,12 +838,12 @@ const P = (() => {
     bsize[i] = size[i] = sz; life[i] = maxLife[i] = lf; drag[i] = dr; grav[i] = gr; flags[i] = fl; alpha[i] = 1;
     return i;
   }
-  const deaths = [];
+  const deaths = []; let liveLast = 0;
   function update(dt) {
-    deaths.length = 0;
+    deaths.length = 0; let live = 0;
     for (let i = 0; i < N; i++) {
       if (life[i] <= 0) continue;
-      life[i] -= dt; const i3 = i * 3;
+      live++; life[i] -= dt; const i3 = i * 3;
       if (life[i] <= 0) { size[i] = 0; alpha[i] = 0; if (flags[i] & (F_SPLIT | F_CRACKLE)) deaths.push(i); continue; }
       const k = Math.max(0, 1 - drag[i] * dt);
       vel[i3] *= k; vel[i3 + 1] = vel[i3 + 1] * k - grav[i] * dt; vel[i3 + 2] *= k;
@@ -821,7 +867,8 @@ const P = (() => {
       if (flags[i] & F_CRACKLE) for (let k = 0; k < 3; k++) spawn(pos[i3], pos[i3 + 1], pos[i3 + 2], rand(-3, 3), rand(-3, 3), rand(-3, 3), 1, 0.95, 0.85, bsize[i] * 0.6, rand(0.06, 0.16), 3, 0, 0);
     }
     if (deaths.length) sfx.crackleBurst(Math.min(deaths.length, 30));
-    aPos.needsUpdate = aCol.needsUpdate = aSize.needsUpdate = aAlpha.needsUpdate = true;
+    if (live || liveLast) aPos.needsUpdate = aCol.needsUpdate = aSize.needsUpdate = aAlpha.needsUpdate = true;
+    liveLast = live;
   }
   function clear() { life.fill(0); size.fill(0); alpha.fill(0); }
   return { spawn, update, clear };
@@ -877,9 +924,14 @@ const snakeSegs = [];
 const sfx = (() => {
   let ctx = null, master = null, noise = null, muted = false, lastCrackle = 0;
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    // iOS: play through the ring/silent switch like a game or video would
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     ctx = new AC();
+    // iOS Safari only unlocks after a sound starts inside the gesture: play one silent sample now
+    try { const b = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(0); } catch (e) {}
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(comp);
     const len = ctx.sampleRate * 2; noise = ctx.createBuffer(1, len, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -944,7 +996,7 @@ function randDir(out) { const u = Math.random() * 2 - 1, th = Math.random() * Ma
 
 function burst(p, pattern = pick(PATTERNS), colorName = pick(SHELL_COLORS), scale = 1, far = false) {
   const c = PAL[colorName], c2 = PAL[pick(SHELL_COLORS)];
-  const S = scale * (far ? 2.6 : 1), sz = (far ? 0.85 : 0.24) * (0.8 + scale * 0.2), cnt = far ? 0.45 : (isMobile ? 0.7 : 1);
+  const S = scale * (far ? 2.6 : 1), sz = (far ? 0.85 : 0.24) * (0.8 + scale * 0.2), cnt = (far ? 0.45 : 1) * Q.fx;
   const sp = (v) => v * S;
   const n = (k) => Math.max(12, (k * cnt) | 0);
   if (!far) glowAt(p, c, 6 * scale);
@@ -1119,7 +1171,7 @@ const FX = {
       const D = 4.6; let acc = 0; sfx.hiss(D, 0.2); sfx.crackle(D, 26, 0.12);
       during(D, (dt, t) => {
         const k = Math.min(1, t / 0.6) * (t > D - 0.9 ? (D - t) / 0.9 : 1) * (0.85 + 0.15 * Math.sin(t * 9));
-        acc += (isMobile ? 160 : 260) * k * dt;
+        acc += 260 * Q.fx * k * dt;
         while (acc >= 1) { acc--; const a = Math.random() * 6.283, r = Math.pow(Math.random(), 1.5) * 2.4, up = rand(9, 15) * (0.6 + 0.4 * k); const gold = Math.random();
           const c = gold < 0.55 ? [1, 0.75, 0.3] : gold < 0.85 ? [1, 0.95, 0.85] : [1, 0.5, 0.18];
           P.spawn(top.x, top.y, top.z, Math.cos(a) * r, up, Math.sin(a) * r, c[0], c[1], c[2], rand(0.09, 0.15), rand(0.9, 1.6), 0.5, 9.8, F_EMBER | (Math.random() < 0.35 ? F_FLICKER : 0) | (Math.random() < 0.05 ? F_CRACKLE : 0)); }
@@ -1231,10 +1283,10 @@ const FX = {
 };
 function explode(p, power, paper) {
   const c = new V3(p.x, 0.35, p.z);
-  for (let k = 0, m = (isMobile ? 120 : 200) * power; k < m; k++) { randDir(_d); _d.y = Math.abs(_d.y) * 0.7; const s = rand(10, 20) * power; P.spawn(c.x, c.y, c.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.93, 0.75, 0.13, rand(0.15, 0.4), 4, 2, 0); }
+  for (let k = 0, m = 200 * Q.fx * power; k < m; k++) { randDir(_d); _d.y = Math.abs(_d.y) * 0.7; const s = rand(10, 20) * power; P.spawn(c.x, c.y, c.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.93, 0.75, 0.13, rand(0.15, 0.4), 4, 2, 0); }
   for (let k = 0; k < 60 * power; k++) P.spawn(c.x, c.y, c.z, rand(-6, 6), rand(2, 9), rand(-6, 6), paper[0], paper[1], paper[2], 0.08, rand(1.8, 3), 2.4, 3.5, 0);
   for (let k = 0; k < 14 * power; k++) Smoke.puff(c.x + rand(-1, 1) * power, c.y + rand(0, 1.2) * power, c.z + rand(-1, 1) * power, 1.6 * power, 0.45, 4.5);
-  glowAt(c, [1, 0.9, 0.7], 14 * power); screenFlash(c, 0.55 * power); shockwave(c, 7 * power); addShake(0.55 * power);
+  glowAt(c, [1, 0.9, 0.7], 14 * power); screenFlash(c, 0.55 * power); vibrate(power > 1.2 ? [40, 30, 70] : 45); shockwave(c, 7 * power); addShake(0.55 * power);
   sfx.boom(Math.min(1.4, power));
 }
 
@@ -1250,7 +1302,7 @@ const sparkler = (() => {
   }
   return {
     get active() { return active; },
-    start(screen) { active = true; t = 0; drawing = true; toWorld(screen.x, screen.y, cur); last.copy(cur); hasLast = true; sfx.hiss(D, 0.1, 6500); sfx.crackle(D, 40, 0.08); showHint('Drag to write in the air with your phuljhari'); },
+    start(screen) { active = true; t = 0; drawing = true; vibrate(8); toWorld(screen.x, screen.y, cur); last.copy(cur); hasLast = true; sfx.hiss(D, 0.1, 6500); sfx.crackle(D, 40, 0.08); showHint('Drag to write in the air with your phuljhari'); },
     move(sx, sy) { if (!active) return; toWorld(sx, sy, cur); drawing = true; },
     up() { drawing = false; },
     update(dt) {
@@ -1262,7 +1314,7 @@ const sparkler = (() => {
         P.spawn(_p.x, _p.y, _p.z, rand(-0.05, 0.05), rand(-0.05, 0.05), rand(-0.05, 0.05), 1, 0.85, 0.5, 0.1, 2.2, 0.5, 0.05, F_INK);
       }
       last.copy(cur);
-      for (let i = 0; i < (isMobile ? 7 : 12) * k; i++) { randDir(_d); const s = rand(1.5, 4.5); P.spawn(cur.x, cur.y, cur.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.92, 0.75, 0.05, rand(0.12, 0.35), 2.5, 2, Math.random() < 0.25 ? F_CRACKLE : 0); }
+      for (let i = 0; i < 12 * Q.fx * k; i++) { randDir(_d); const s = rand(1.5, 4.5); P.spawn(cur.x, cur.y, cur.z, _d.x * s, _d.y * s, _d.z * s, 1, 0.92, 0.75, 0.05, rand(0.12, 0.35), 2.5, 2, Math.random() < 0.25 ? F_CRACKLE : 0); }
       P.spawn(cur.x, cur.y, cur.z, 0, 0, 0, 1, 1, 0.9, 0.22, 0.05, 0, 0, 0);
       glowAt(cur, [1, 0.85, 0.55], 2.5 * k);
     },
@@ -1307,7 +1359,12 @@ CRACKERS.forEach((c) => {
   tray.appendChild(b);
 });
 function select(id) { selected = id; tray.querySelectorAll('.cracker').forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id ? 'true' : 'false')); updateHint(); }
-function updateHint() { const c = byId[selected]; $('#hint').textContent = c.id === 'phuljhari' ? 'Tap the sky or street to light the phuljhari, then drag to write' : `Tap the street to light the ${c.name}`; }
+const VERB = hasTouch ? 'Tap' : 'Click';
+if (!hasTouch) $('#step2').textContent = 'Click the street to light it, or press Space to light it at the cursor. With the phuljhari, hold and drag to write in the air.';
+function updateHint() {
+  const c = byId[selected];
+  $('#hint').textContent = c.id === 'phuljhari' ? `${VERB} anywhere to light the phuljhari, then drag to write` : `${VERB} the street to light the ${c.name}${hasTouch ? '' : ' · keys 1–9, 0, −, = switch · Space lights'}`;
+}
 function showHint(t) { $('#hint').textContent = t; }
 
 let toastTimer = 0, toastShownAt = -10, lastTip = '';
@@ -1374,12 +1431,12 @@ $('#muteBtn').onclick = () => {
 
 // intro flow
 function begin() {
-  sfx.init(); state = 'intro'; introT = 0;
+  sfx.init(); document.body.dataset.audio = '1'; state = 'intro'; introT = 0;
   $('#preCard').classList.add('fade-out'); setTimeout(() => ($('#preCard').hidden = true), 800);
   $('#skipBtn').hidden = false;
 }
 $('#beginBtn').onclick = begin;
-$('#jumpBtn').onclick = () => { sfx.init(); $('#preCard').hidden = true; finishIntro(); goStreet(); };
+$('#jumpBtn').onclick = () => { sfx.init(); document.body.dataset.audio = '1'; $('#preCard').hidden = true; finishIntro(); goStreet(); };
 $('#skipBtn').onclick = () => { finishIntro(); };
 function finishIntro() { introT = 15; state = 'intro'; $('#skipBtn').hidden = true; showTitle(); }
 let titleShown = false;
@@ -1397,7 +1454,7 @@ function arriveStreet() { state = 'street'; $('#hud').hidden = false; $('#trayWr
 function startRound(m) {
   mode = m; score = 0; lit = 0; counts = {}; recent = []; combo = 0; timeLeft = ROUND; finaleRunning = false;
   $('#startModal').hidden = true; $('#endModal').hidden = true; $('#timer').hidden = m !== 'timed'; $('#timer').classList.remove('low'); $('#timer').textContent = ROUND;
-  setScoreUI(); state = 'play'; updateHint();
+  setScoreUI(); state = 'play'; updateHint(); document.body.classList.add('playing');
   toast('How to play', m === 'timed' ? 'Mix different crackers for a variety bonus. Fill the Roshni meter before the clock runs out.' : 'No timer. Light whatever you like. Fill the meter for a grand finale.');
 }
 $('#playBtn').onclick = () => startRound('timed');
@@ -1406,7 +1463,7 @@ $('#againBtn').onclick = () => startRound('timed');
 $('#endFreeBtn').onclick = () => startRound('free');
 
 function endRound(success) {
-  state = 'end'; sparkler.clear();
+  state = 'end'; sparkler.clear(); sparklerPointer = null; document.body.classList.remove('playing');
   const fav = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   $('#endEyebrow').textContent = mode === 'timed' ? (success ? 'Grand finale' : 'Time\'s up') : 'Grand finale';
   $('#endTitle').textContent = success ? 'The whole street is lit!' : score > GOAL * 0.6 ? 'The street is glowing.' : 'A warm little Diwali.';
@@ -1418,7 +1475,7 @@ function endRound(success) {
 function grandFinale(after_) {
   finaleRunning = true; sfx.chord();
   toast('Grand finale', hostName ? `${hostName} and the whole lane say Shubh Deepavali!` : 'The whole lane joins in. Shubh Deepavali!');
-  const N = isMobile ? 34 : 50;
+  const N = Math.round(50 * Q.fx);
   for (let i = 0; i < N; i++) after(i * 0.16 + rand(0, 0.1), () => {
     const from = new V3(rand(-16, 16), 0.5, rand(-48, -30));
     shell(from, { vy: rand(22, 28), vx: rand(-3, 3), vz: rand(-3, 0), time: rand(1.1, 1.45), scale: rand(0.9, 1.25), sound: i % 2 === 0 });
@@ -1448,30 +1505,85 @@ function streetPoint(sx, sy) {
   if (!hit || v.z < -26) { raycaster.ray.intersectPlane(backPlane, v); v.set(v.x || 0, 0, -18); }
   v.x = clamp(v.x, -6.2, 6.2); v.z = clamp(v.z, -28, 13); v.y = 0; return v;
 }
-let pointerDown = false;
+// a marker on the street showing where a click will land (mouse and trackpad only)
+const ghost = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffb627, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
+ghost.position.y = 0.06; ghost.visible = false; scene.add(ghost);
+let hoverPoint = null, mouseNdc = { x: 0, y: 0 }, mouseOnCanvas = false;
+function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+function nudgeCard(id) { const b = tray.querySelector(`[data-id="${id}"]`); if (!b) return; b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge'); }
+function lightAt(p, screen) {
+  if (state !== 'play') return false;
+  const until = cooldownUntil[selected] || 0;
+  if (time < until) { showHint(`${byId[selected].name} is getting ready… try another one`); nudgeCard(selected); return false; }
+  cooldownUntil[selected] = time + byId[selected].cd;
+  if (selected !== 'phuljhari') shockwave(p, 0.9, 0xffb627, 0.35); // instant "got it" ring under your finger
+  FX[selected](p, screen);
+  addScore(selected, p); vibrate(12);
+  const tp = tipFor(selected); toast(tp.k, tp.tip);
+  return true;
+}
+let sparklerPointer = null;
 canvas.addEventListener('pointerdown', (e) => {
   sfx.init();
   if (state !== 'play' && state !== 'finale') return;
-  pointerDown = true; try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-  if (selected === 'phuljhari' && sparkler.active) { sparkler.move(e.clientX, e.clientY); return; }
-  if (state === 'finale') return;
-  const until = cooldownUntil[selected] || 0;
-  if (time < until) { showHint(`${byId[selected].name} is getting ready… try another one`); return; }
+  e.preventDefault();
+  if (selected === 'phuljhari' && sparkler.active) {
+    if (sparklerPointer === null) { sparklerPointer = e.pointerId; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} sparkler.move(e.clientX, e.clientY); }
+    return;
+  }
   const p = streetPoint(e.clientX, e.clientY);
-  cooldownUntil[selected] = time + byId[selected].cd;
-  FX[selected](p, { x: e.clientX, y: e.clientY });
-  addScore(selected, p);
-  const tp = tipFor(selected); toast(tp.k, tp.tip);
+  if (lightAt(p, { x: e.clientX, y: e.clientY }) && selected === 'phuljhari') { sparklerPointer = e.pointerId; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
 });
-canvas.addEventListener('pointermove', (e) => { if (pointerDown && sparkler.active && selected === 'phuljhari') sparkler.move(e.clientX, e.clientY); });
-const up = () => { pointerDown = false; sparkler.up(); };
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'mouse') { mouseOnCanvas = true; mouseNdc.x = (e.clientX / innerWidth) * 2 - 1; mouseNdc.y = -(e.clientY / innerHeight) * 2 + 1; hoverPoint = streetPoint(e.clientX, e.clientY); }
+  if (e.pointerId === sparklerPointer && sparkler.active) sparkler.move(e.clientX, e.clientY);
+});
+canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { mouseOnCanvas = false; hoverPoint = null; } });
+const up = (e) => { if (e.pointerId === sparklerPointer) { sparklerPointer = null; sparkler.up(); } };
 canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+// iOS Safari: stop pinch and double-tap from zooming the page mid-game
+['gesturestart', 'gesturechange'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+
+// keyboard: 1-9, 0, -, = pick crackers; Space lights at the cursor (or a random spot); M mute; I almanac; F full screen
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+tray.querySelectorAll('.cracker').forEach((b, i) => b.insertAdjacentHTML('afterbegin', `<kbd>${KEYS[i]}</kbd>`));
+addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea')) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = KEYS.indexOf(e.key);
+  if (k >= 0 && (state === 'play' || state === 'street')) { sfx.init(); select(CRACKERS[k].id); tray.querySelector(`[data-id="${CRACKERS[k].id}"]`).scrollIntoView({ inline: 'nearest', block: 'nearest' }); e.preventDefault(); return; }
+  if ((e.key === ' ' || (e.key === 'Enter' && !(e.target.closest && e.target.closest('button')))) && state === 'play' && !(e.target.closest && e.target.closest('button:not(.cracker), #drawer'))) {
+    sfx.init(); e.preventDefault();
+    const p = hoverPoint ? hoverPoint.clone() : new V3(rand(-5.5, 5.5), 0, rand(-20, 8));
+    const sp = p.clone().setY(1.2).project(camera);
+    lightAt(p, { x: (sp.x + 1) * 0.5 * innerWidth, y: (1 - sp.y) * 0.5 * innerHeight });
+    return;
+  }
+  if (e.key === 'm' || e.key === 'M') $('#muteBtn').click();
+  else if (e.key === 'i' || e.key === 'I') { if ($('#drawer').classList.contains('open')) closeDrawer(); else openDrawer(); }
+  else if ((e.key === 'f' || e.key === 'F') && !$('#fsBtn').hidden) $('#fsBtn').click();
+});
+// mouse wheel scrolls the tray sideways
+tray.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && tray.scrollWidth > tray.clientWidth) { tray.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+
+// full screen where the browser allows it (not iPhone Safari)
+const fsEl = document.documentElement;
+const fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen, fsExit = document.exitFullscreen || document.webkitExitFullscreen;
+if (fsReq && (document.fullscreenEnabled || document.webkitFullscreenEnabled) && TIER !== 'phone') $('#fsBtn').hidden = false;
+$('#fsBtn').onclick = () => {
+  try {
+    const on = document.fullscreenElement || document.webkitFullscreenElement;
+    const r = on ? fsExit.call(document) : fsReq.call(fsEl);
+    if (r && r.catch) r.catch(() => ($('#fsBtn').hidden = true));
+  } catch (e) { $('#fsBtn').hidden = true; }
+};
 
 /* ================= sky keyframes ================= */
 const K = [
-  { n: 0, z: [0.2, 0.28, 0.56], m: [0.78, 0.5, 0.55], h: [1.0, 0.6, 0.3], s: [1.0, 0.55, 0.22], hemi: [0.95, 0.75, 0.6], hi: 0.75 },
+  { n: 0, z: [0.2, 0.28, 0.56], m: [0.78, 0.5, 0.55], h: [1.0, 0.6, 0.3], s: [1.0, 0.55, 0.22], hemi: [0.95, 0.72, 0.6], hi: 0.55 },
   { n: 0.45, z: [0.1, 0.09, 0.3], m: [0.42, 0.2, 0.42], h: [0.92, 0.38, 0.32], s: [1.0, 0.35, 0.2], hemi: [0.6, 0.45, 0.6], hi: 0.5 },
-  { n: 1, z: [0.012, 0.014, 0.05], m: [0.035, 0.03, 0.1], h: [0.11, 0.065, 0.17], s: [0, 0, 0], hemi: [0.36, 0.36, 0.62], hi: 0.42 },
+  { n: 1, z: [0.012, 0.014, 0.05], m: [0.035, 0.03, 0.1], h: [0.11, 0.065, 0.17], s: [0, 0, 0], hemi: [0.34, 0.34, 0.6], hi: 0.3 },
 ];
 const _a = new THREE.Color(), _b = new THREE.Color();
 function keyLerp(key, n, out) {
@@ -1488,11 +1600,30 @@ function applyNight() {
   scene.fog.color.copy(skyU.uHorizon.value).multiplyScalar(0.75); scene.fog.density = lerp(0.0024, 0.0019, n);
   keyLerp('hemi', n, hemi.color); hemi.groundColor.setRGB(0.12, 0.08, 0.06); hemi.intensity = keyLerp('hi', n);
   sunLight.color.copy(skyU.uSunColor.value); sunLight.intensity = 0.9 * (1 - smooth(0.3, 0.6, n)); sunLight.position.copy(skyU.uSunDir.value).multiplyScalar(200);
-  fillL.intensity = fillR.intensity = 0.7 * clamp(night.lit, 0, 1);
+  fillL.intensity = fillR.intensity = 0.38 * clamp(night.lit, 0, 1);
   stars.material.uniforms.uOp.value = smooth(0.55, 1, n);
   lampMat.uniforms.uLit.value = night.lit;
   for (const m of windowLamp) m.emissiveIntensity = night.win * 0.6;
 }
+
+/* ================= adaptive resolution ================= */
+// Lower the render resolution when frames get slow and jittery (a real GPU struggle), not when the browser caps
+// a steady 30 fps (iOS Low Power Mode). Raise it back after a calm spell.
+const perf = { ema: 16.7, jit: 0, t: 0, calm: 0 };
+function adaptQuality(dt) {
+  const ms = dt * 1000; perf.ema += (ms - perf.ema) * 0.05; perf.jit += (Math.abs(ms - perf.ema) - perf.jit) * 0.05; perf.t += dt;
+  if (perf.t < 1.5) return; perf.t = 0;
+  const struggling = perf.ema > 24 && perf.jit > 2.5, smooth_ = perf.ema < 18;
+  if (struggling) {
+    perf.calm = 0;
+    if (DPR > 1) { DPR = Math.max(1, DPR - 0.25); renderer.setPixelRatio(DPR); renderer.setSize(viewW(), viewH(), false); updateScale(); }
+    else if (Q.fx > 0.5) Q.fx = Math.max(0.5, Q.fx - 0.1);
+  } else if (smooth_) {
+    if (++perf.calm >= 4) { perf.calm = 0; const cap = Math.min(devicePixelRatio || 1, Q.maxDpr);
+      if (Q.fx < 1) Q.fx = Math.min(1, Q.fx + 0.05); else if (DPR < cap) { DPR = Math.min(cap, DPR + 0.25); renderer.setPixelRatio(DPR); renderer.setSize(viewW(), viewH(), false); updateScale(); } }
+  } else perf.calm = 0;
+}
+const par = { x: 0, y: 0 };
 
 /* ================= main loop ================= */
 const clock = new THREE.Clock();
@@ -1517,7 +1648,14 @@ function frame() {
   }
   if (state === 'street' || state === 'play' || state === 'finale' || state === 'end') {
     const sp = streetPose(); camPos.copy(sp.pos); camPos.x += Math.sin(time * 0.3) * 0.25; camPos.y += Math.sin(time * 0.23) * 0.1; camLook.copy(sp.look);
+    if (!hasTouch && !reduceMotion) { // gentle mouse parallax on desktop
+      par.x = lerp(par.x, mouseOnCanvas ? mouseNdc.x : 0, Math.min(1, dt * 2)); par.y = lerp(par.y, mouseOnCanvas ? mouseNdc.y : 0, Math.min(1, dt * 2));
+      camPos.x += par.x * 0.9; camPos.y += par.y * 0.35; camLook.x += par.x * 2.2; camLook.y += par.y * 1.2;
+    }
   }
+  ghost.visible = state === 'play' && !!hoverPoint && !(selected === 'phuljhari');
+  if (ghost.visible) { ghost.position.x = hoverPoint.x; ghost.position.z = hoverPoint.z; const k = 1 + Math.sin(time * 6) * 0.08; ghost.scale.set(k, 1, k); ghost.material.opacity = time < (cooldownUntil[selected] || 0) ? 0.25 : 0.8; }
+  adaptQuality(dt);
   if (state === 'play' && mode === 'timed') {
     timeLeft -= dt; const s = Math.max(0, Math.ceil(timeLeft)); const el = $('#timer'); if (el.textContent !== String(s)) el.textContent = s; el.classList.toggle('low', timeLeft < 10);
     if (timeLeft <= 0) endRound(false);
@@ -1565,8 +1703,13 @@ function frame() {
 applyNight();
 frame();
 
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); updateScale(); });
-document.addEventListener('visibilitychange', () => { clock.getDelta(); });
+function onResize() { const w = viewW(), h = viewH(); camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h, false); updateScale(); }
+addEventListener('resize', onResize);
+addEventListener('orientationchange', () => setTimeout(onResize, 300)); // iOS reports the new size late
+if (window.visualViewport) visualViewport.addEventListener('resize', onResize);
+document.addEventListener('visibilitychange', () => { clock.getDelta(); if (!document.hidden) sfx.init(); });
+// iOS can suspend audio after a call or app switch; any touch brings it back
+['touchend', 'click'].forEach((t) => document.addEventListener(t, () => { if (document.body.dataset.audio) sfx.init(); }, { passive: true }));
 })();
 </script>
 </body>
