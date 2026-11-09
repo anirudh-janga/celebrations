@@ -37,7 +37,7 @@ As a guest, I want the opening shot to be steady, so that it looks polished.
 - Acceptance: no shimmering ground or buildings (depth precision, offsets, mipmapped textures, antialiasing on every device); no blurred overlays over the 3D view; no hard-blinking lights.
 
 **A4. The greeting**
-As a guest, I want a big "Happy Diwali 2026" title to appear once the city is lit, so that I know what this page is for.
+As a guest, I want a "Happy Diwali 2026" title with the Telugu greeting "దీపావళి శుభాకాంక్షలు" above it to appear once the city is lit, so that I know what this page is for.
 - Acceptance: the title appears after the diyas; the call to action ("Go down to the street") appears below it; the intro can be skipped at any time.
 
 **A5. Personal greeting from the host**
@@ -54,7 +54,7 @@ As a guest, I want the camera to swoop from the rooftop view down to a lane line
 
 **B2. Pick a cracker from the box**
 As a player, I want a "cracker box" tray with at least 10 Indian firecrackers, each with a picture and name, so that I can choose what to burst.
-- Acceptance: tray scrolls sideways on a phone; each item shows a plain English name and a short description; the selected item is clearly highlighted.
+- Acceptance: tray scrolls sideways on a phone; each item shows a plain English name, its Telugu name (తారాజువ్వ, చిచ్చుబుడ్డి, భూచక్రం, కాకరపువ్వొత్తులు, పాము బిళ్ళలు…) and a short description in the hint line; the selected item is clearly highlighted.
 
 **B3. Place and light it**
 As a player, I want to tap a spot on the street to place the cracker and see its fuse sparkle before it goes off, so that it feels like lighting it with an agarbatti.
