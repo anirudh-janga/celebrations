@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Happy Diwali 2026</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Watch an Indian city light up for Diwali, then light a box of fireworks on the street. A Diwali 2026 greeting.">
+<meta name="description" content="Watch Seattle light up for Diwali, then light a box of fireworks on the street. A Diwali 2026 greeting.">
 <meta property="og:title" content="Happy Diwali 2026 · దీపావళి శుభాకాంక్షలు">
-<meta property="og:description" content="Watch an Indian city light up for Diwali, then light rockets, sparklers and flower pots on the street.">
+<meta property="og:description" content="Watch Seattle light up for Diwali, then light rockets, sparklers and flower pots on the street.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Ramaraja&family=Hind:wght@400;500;600;700&family=Hind+Guntur:wght@400;600&display=swap">
@@ -233,13 +233,13 @@ body.kb .cracker kbd { display: block; }
 </style>
 </head>
 <body>
-<canvas id="scene" aria-label="An Indian city at Diwali night"></canvas>
+<canvas id="scene" aria-label="Seattle on Diwali night"></canvas>
 <div id="flash"></div>
 
 <!-- Intro: before the sun sets -->
 <div class="center-card" id="preCard">
   <div class="eyebrow">Sunday, 8 November 2026</div>
-  <h2 id="preHead">The sun is setting over the city.</h2>
+  <h2 id="preHead">The sun is setting over Seattle.</h2>
   <p id="preBody">Turn your sound on. When it gets dark, the lamps come on.</p>
   <div class="row">
     <button class="btn" id="beginBtn" type="button">Begin</button>
@@ -599,11 +599,11 @@ function boxGeo() { const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5
 
 /* ---------- lamps (diyas, string lights) as one point cloud ---------- */
 const lamp = { pos: [], col: [], size: [], delay: [], phase: [], mode: [] };
-const TEMPLE = new V3(0, 0, -150);
+const NEEDLE = new V3(0, 0, -155);
 const RIPPLE_MAX = 420;
 function addLamp(x, y, z, size, color, mode = 0, phase = Math.random()) {
   lamp.pos.push(x, y, z); lamp.col.push(color[0], color[1], color[2]); lamp.size.push(size);
-  const d = Math.hypot(x - TEMPLE.x, z - TEMPLE.z) + Math.max(0, y - 20) * 0.3;
+  const d = Math.hypot(x - NEEDLE.x, z - NEEDLE.z) + Math.max(0, y - 20) * 0.3;
   lamp.delay.push(clamp(d / RIPPLE_MAX, 0, 1) * 0.86 + Math.random() * 0.1);
   lamp.phase.push(phase); lamp.mode.push(mode);
 }
@@ -653,6 +653,16 @@ function bucket(tex, count) {
   mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3).fill(1), 3); // r128 sizes this from .count, so allocate before zeroing it
   mesh.count = 0; mesh.userData.max = count; mesh.frustumCulled = false; city.add(mesh); return mesh;
 }
+const roofGeo = (() => { // a triangular prism: ridge along z, slopes facing the street
+  const v = [-0.5, 0, 0.5, 0.5, 0, 0.5, 0, 1, 0.5,  -0.5, 0, -0.5, 0, 1, -0.5, 0.5, 0, -0.5,
+             -0.5, 0, 0.5, 0, 1, 0.5, 0, 1, -0.5,  -0.5, 0, 0.5, 0, 1, -0.5, -0.5, 0, -0.5,
+             0.5, 0, 0.5, 0.5, 0, -0.5, 0, 1, -0.5,  0.5, 0, 0.5, 0, 1, -0.5, 0, 1, 0.5];
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.computeVertexNormals(); return g;
+})();
+const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }), 90);
+roofs.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(90 * 3).fill(1), 3); roofs.count = 0; roofs.frustumCulled = false; city.add(roofs);
+const ROOF_TONES = [0x3a3d46, 0x4a3f3c, 0x2f3540, 0x5a4a44, 0x444a52];
+function addRoof(x, y, z, d, h, w) { if (roofs.count >= 90) return; _m4.compose(_p.set(x, y, z), _q.identity(), _s.set(d, h, w)); roofs.setMatrixAt(roofs.count, _m4); roofs.setColorAt(roofs.count, _c.set(pick(ROOF_TONES))); roofs.count++; }
 const houses = bucket(houseTex, 90), mids = bucket(midTex, 360), talls = bucket(tallTex, 200);
 const tankGeo = new THREE.CylinderGeometry(0.7, 0.7, 1.3, 10); tankGeo.translate(0, 0.65, 0);
 const tanks = new THREE.InstancedMesh(tankGeo, new THREE.MeshLambertMaterial({ color: 0x141414 }), 220); tanks.count = 0; tanks.frustumCulled = false; city.add(tanks);
@@ -662,7 +672,8 @@ function place(mesh, x, z, w, h, d, color) {
   _m4.compose(_p.set(x, 0, z), _q.identity(), _s.set(w, h, d)); mesh.setMatrixAt(mesh.count, _m4);
   mesh.setColorAt(mesh.count, _c.set(color)); mesh.count++;
 }
-function addTank(x, y, z) { if (tanks.count >= 220) return; _m4.compose(_p.set(x, y, z), _q.identity(), _s.set(1, 1, 1)); tanks.setMatrixAt(tanks.count++, _m4); }
+function addTank(x, y, z) { return; // (no rooftop water tanks in Seattle)
+ if (tanks.count >= 220) return; _m4.compose(_p.set(x, y, z), _q.identity(), _s.set(1, 1, 1)); tanks.setMatrixAt(tanks.count++, _m4); }
 
 const lanterns = [];
 const lanternGeo = new THREE.OctahedronGeometry(0.3, 0); lanternGeo.scale(1, 1.3, 1);
@@ -674,6 +685,7 @@ for (const s of [-1, 1]) {
     const w = rand(5.5, 8), floors = 2 + ((Math.random() * 3) | 0), h = floors * 3.2 + 0.7, d = rand(8, 12);
     const zc = z - w / 2;
     place(houses, s * (STREET_HALF + d / 2), zc, d, h, w - 0.25, pick(PASTELS)); // x is depth, z is frontage
+    addRoof(s * (STREET_HALF + d / 2), h, zc, d + 0.6, rand(2, 3.2), w - 0.1);
     // roof parapet diyas facing the street
     for (let q = zc - w / 2 + 0.35; q <= zc + w / 2 - 0.35; q += 0.6) addLamp(s * (STREET_HALF + 0.15), h + 0.14, q, 0.6, DIYA, 0);
     for (let f = 1; f < floors; f++) if (Math.random() < 0.65) {
@@ -703,19 +715,21 @@ for (let z = 4; z > -66; z -= 8) {
 const skyline = [];
 function canPlace(x, z, w, d) {
   if (Math.abs(x) < STREET_HALF + 14 && z > -84) return false;
-  if (Math.abs(x) < 28 && z > -190) return false; // keep the view down the street to the temple clear
-  if (Math.abs(x - TEMPLE.x) < 30 && Math.abs(z - TEMPLE.z) < 34) return false;
+  if (Math.abs(x) < 28 && z > -190) return false; // keep the view down the street to the Space Needle clear
+  if (Math.abs(x - NEEDLE.x) < 30 && Math.abs(z - NEEDLE.z) < 34) return false;
   return true;
 }
+const DOWNTOWN = new V3(SIDE * -110, 0, -270); // Seattle's tower cluster, on a random side each visit
 const SKY_N = isMobile ? 220 : 330;
 for (let i = 0, tries = 0; i < SKY_N && tries < 4000; tries++) {
   const side = Math.random() < 0.28;
-  const x = side ? (Math.random() < 0.5 ? -1 : 1) * rand(48, 240) : rand(-320, 320);
-  const z = side ? rand(-90, 40) : rand(-88, -420);
-  const tall = !side && Math.random() < 0.2;
-  const w = rand(8, 17), d = rand(8, 16), h = tall ? rand(32, 70) : rand(10, side ? 22 : 28);
+  const downtown = !side && Math.random() < 0.3;
+  const x = downtown ? DOWNTOWN.x + rand(-55, 55) : side ? (Math.random() < 0.5 ? -1 : 1) * rand(48, 240) : rand(-320, 320);
+  const z = downtown ? DOWNTOWN.z + rand(-45, 45) : side ? rand(-90, 40) : rand(-88, -400);
+  const tall = downtown ? Math.random() < 0.75 : (!side && Math.random() < 0.06);
+  const w = rand(8, 17), d = rand(8, 16), h = tall ? (downtown ? rand(45, 95) : rand(30, 45)) : rand(10, side ? 22 : 26);
   if (!canPlace(x, z, w, d)) continue;
-  const tone = pick([0x6b5a66, 0x5b5560, 0x7a6658, 0x545a6a, 0x6e6360, 0x4e4a57]);
+  const tone = pick([0x4d5566, 0x5b6272, 0x3f4756, 0x6a6f7a, 0x4a5262, 0x556070, 0x5e5a5f]);
   place(tall ? talls : mids, x, z, w, h, d, tone);
   skyline.push({ x, z, w, h, d }); i++;
   if (!tall && Math.random() < 0.5) addTank(x + rand(-w / 3, w / 3), h, z + rand(-d / 3, d / 3));
@@ -729,60 +743,83 @@ for (let i = 0, tries = 0; i < SKY_N && tries < 4000; tries++) {
     }
   }
 }
+roofs.instanceMatrix.needsUpdate = true; roofs.instanceColor.needsUpdate = true;
 houses.instanceMatrix.needsUpdate = mids.instanceMatrix.needsUpdate = talls.instanceMatrix.needsUpdate = tanks.instanceMatrix.needsUpdate = true;
 for (const m of [houses, mids, talls]) if (m.instanceColor) m.instanceColor.needsUpdate = true;
 
 // landmarks
 const stone = new THREE.MeshLambertMaterial({ color: 0x9c7a5e });
 const darkStone = new THREE.MeshLambertMaterial({ color: 0x6e5a52 });
-(() => { // temple with a curved shikhara, at the end of the street
-  const prof = [];
-  const R = 6.2, H = 32;
-  for (let i = 0; i <= 24; i++) { const t = i / 24; prof.push(new THREE.Vector2(R * Math.pow(1 - t, 0.62) * (1 - 0.04 * Math.sin(t * 40)) + 0.6 * (1 - t), 9 + t * H)); }
-  const tower = new THREE.Mesh(new THREE.LatheGeometry(prof, 16), stone); tower.position.copy(TEMPLE); city.add(tower);
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(26, 3, 34), darkStone); plinth.position.set(TEMPLE.x, 1.5, TEMPLE.z + 4); city.add(plinth);
-  const garbha = new THREE.Mesh(new THREE.BoxGeometry(14, 7, 14), stone); garbha.position.set(TEMPLE.x, 6, TEMPLE.z); city.add(garbha);
-  const mprof = []; for (let i = 0; i <= 12; i++) { const t = i / 12; mprof.push(new THREE.Vector2(5.2 * Math.pow(1 - t, 0.8) + 0.3, 9 + t * 9)); }
-  const mandapa = new THREE.Mesh(new THREE.LatheGeometry(mprof, 12), stone); mandapa.position.set(TEMPLE.x, 0, TEMPLE.z + 13); city.add(mandapa);
-  const mbox = new THREE.Mesh(new THREE.BoxGeometry(12, 6, 10), stone); mbox.position.set(TEMPLE.x, 6, TEMPLE.z + 13); city.add(mbox);
-  const amalaka = new THREE.Mesh(new THREE.SphereGeometry(1.7, 16, 8), stone); amalaka.scale.y = 0.45; amalaka.position.set(TEMPLE.x, 9 + H + 0.4, TEMPLE.z); city.add(amalaka);
-  const kalash = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 8), new THREE.MeshLambertMaterial({ color: 0xd4a017, emissive: 0x3a2500 })); kalash.position.set(TEMPLE.x, 9 + H + 1.4, TEMPLE.z); city.add(kalash);
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4, 5), darkStone); pole.position.set(TEMPLE.x, 9 + H + 3.4, TEMPLE.z); city.add(pole);
-  const flagG = new THREE.BufferGeometry(); flagG.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, -1.4, 0, 3, -0.7, 0]), 3)); flagG.computeVertexNormals();
-  const flag = new THREE.Mesh(flagG, new THREE.MeshBasicMaterial({ color: 0xff7a00, side: THREE.DoubleSide })); flag.position.set(TEMPLE.x + 0.05, 9 + H + 5.3, TEMPLE.z); city.add(flag);
-  lanterns.push({ mesh: flag, col: [1, 0.48, 0], phase: 0, base: flag.position.clone(), flag: true });
-  // diya outlines on the shikhara: vertical ribs and rings
-  for (let r = 0; r < 12; r++) {
-    const a = (r / 12) * Math.PI * 2 + Math.PI / 12;
-    for (let i = 0; i < prof.length - 2; i++) { const v = prof[i]; addLamp(TEMPLE.x + Math.cos(a) * (v.x + 0.15), v.y, TEMPLE.z + Math.sin(a) * (v.x + 0.15), 0.75, DIYA, 0); }
+function beam(a, b, r, mat) { // a cylinder from point a to point b
+  const len = a.distanceTo(b), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 6), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), new V3().subVectors(b, a).normalize()); city.add(m); return m;
+}
+function lampsAlong(a, b, step, size, color, mode = 0) { const n = Math.max(1, Math.round(a.distanceTo(b) / step)); for (let i = 0; i <= n; i++) { const t = i / n; addLamp(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), size, color, mode, t * 6); } }
+(() => { // the Space Needle, at the end of the street
+  const N = NEEDLE, mat = new THREE.MeshLambertMaterial({ color: 0xd9d4cc }), gold = new THREE.MeshLambertMaterial({ color: 0xd8a24a });
+  beam(new V3(N.x, 0, N.z), new V3(N.x, 47, N.z), 1.3, mat); // core
+  for (let i = 0; i < 3; i++) for (const off of [-0.16, 0.16]) { // three pairs of legs: wide at the base, pinched at the waist, flaring to the top
+    const a = (i / 3) * Math.PI * 2 + off;
+    const base = new V3(N.x + Math.cos(a) * 8, 0, N.z + Math.sin(a) * 8), waist = new V3(N.x + Math.cos(a) * 1.9, 21, N.z + Math.sin(a) * 1.9), top = new V3(N.x + Math.cos(a) * 5, 46, N.z + Math.sin(a) * 5);
+    beam(base, waist, 0.45, mat); beam(waist, top, 0.4, mat);
+    lampsAlong(base, waist, 1.4, 0.75, GOLD_BULB, 2); lampsAlong(waist, top, 1.4, 0.75, GOLD_BULB, 2);
   }
-  for (let i = 2; i < prof.length - 3; i += 4) { const v = prof[i]; for (let k = 0; k < 28; k++) { const a = (k / 28) * Math.PI * 2; addLamp(TEMPLE.x + Math.cos(a) * (v.x + 0.15), v.y, TEMPLE.z + Math.sin(a) * (v.x + 0.15), 0.7, DIYA, 0); } }
-  for (let q = -12.5; q <= 12.5; q += 0.9) addLamp(TEMPLE.x + q, 3.15, TEMPLE.z + 21.2, 0.7, DIYA, 0); // plinth edge
-  for (let q = -6; q <= 6; q += 0.8) addLamp(TEMPLE.x + q, 9.15, TEMPLE.z + 18.2, 0.65, DIYA, 0);
+  const prof = [[0, 45.6], [6, 46.2], [9.6, 47.8], [9.9, 48.5], [8.6, 49.8], [6.2, 51.1], [4, 52], [2, 52.6], [0, 52.9]].map(([r, y]) => new THREE.Vector2(r, y));
+  const top = new THREE.Mesh(new THREE.LatheGeometry(prof, 32), mat); top.position.set(N.x, 0, N.z); city.add(top);
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(7.6, 0.28, 6, 40), gold); halo.rotation.x = Math.PI / 2; halo.position.set(N.x, 46.3, N.z); city.add(halo);
+  beam(new V3(N.x, 52.9, N.z), new V3(N.x, 64, N.z), 0.22, mat); // spire
+  const ring = (r, y, n, size, color, mode) => { for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2; addLamp(N.x + Math.cos(a) * r, y, N.z + Math.sin(a) * r, size, color, mode, k * 0.7); } };
+  ring(10.05, 48.5, 72, 0.85, DIYA, 0); ring(6.35, 51.1, 44, 0.8, DIYA, 0); ring(7.9, 46.3, 52, 0.75, BULBS[0], 1);
+  for (let k = 0; k < 52; k++) { const a = (k / 52) * Math.PI * 2; addLamp(N.x + Math.cos(a) * 7.9, 46.3, N.z + Math.sin(a) * 7.9, 0.75, BULBS[k % 5], 1, k * 0.7); }
+  addLamp(N.x, 64.4, N.z, 1.6, [1, 0.85, 0.5], 2, 0);
 })();
-(() => { // domed hall with four minarets
-  const P = new V3(-105 * SIDE, 0, rand(-235, -195)), mat = new THREE.MeshLambertMaterial({ color: 0xcdbfb0 });
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, 16, 24), mat); drum.position.set(P.x, 8, P.z); city.add(drum);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(12.4, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat); dome.position.set(P.x, 16, P.z); dome.scale.y = 1.15; city.add(dome);
-  const fin = new THREE.Mesh(new THREE.ConeGeometry(0.6, 5, 6), mat); fin.position.set(P.x, 32.5, P.z); city.add(fin);
-  for (const [dx, dz] of [[-17, -17], [17, -17], [-17, 17], [17, 17]]) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.5, 40, 10), mat); m.position.set(P.x + dx, 20, P.z + dz); city.add(m);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(1.7, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat); cap.position.set(P.x + dx, 40, P.z + dz); city.add(cap);
-    for (const y of [14, 26, 38]) for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; addLamp(P.x + dx + Math.cos(a) * 1.9, y, P.z + dz + Math.sin(a) * 1.9, 0.8, GOLD_BULB, 2, k); }
+(() => { // downtown: a stepped dark-glass tower and a little pyramid-topped one
+  const D = DOWNTOWN;
+  place(talls, D.x, D.z, 19, 82, 19, 0x2e3440); place(talls, D.x, D.z, 15, 104, 15, 0x2b313c); place(talls, D.x, D.z, 10, 122, 10, 0x283039);
+  const sx = D.x + SIDE * 40, sz = D.z + 30;
+  place(mids, sx, sz, 8, 38, 8, 0xd8d0c4);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(5.8, 10, 4), new THREE.MeshLambertMaterial({ color: 0xe3dccf })); cap.rotation.y = Math.PI / 4; cap.position.set(sx, 43, sz); city.add(cap);
+  for (let q = -9; q <= 9; q += 1.2) addLamp(D.x + q, 82.3, D.z + 9.7, 1.0, GOLD_BULB, 2);
+  for (let q = -4.6; q <= 4.6; q += 1.1) addLamp(D.x + q, 122.3, D.z + 5.2, 1.0, DIYA, 0);
+  addLamp(sx, 48.5, sz, 1.4, DIYA, 0);
+})();
+const wheel = (() => { // the Great Wheel on the waterfront
+  const W = new V3(SIDE * 62, 0, -398), R = 11, cy = 14, mat = new THREE.MeshLambertMaterial({ color: 0xe8e4de });
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.3, 6, 48), mat); rim.position.set(W.x, cy, W.z); city.add(rim);
+  for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2; beam(new V3(W.x, cy, W.z), new V3(W.x + Math.cos(a) * R, cy + Math.sin(a) * R, W.z), 0.08, mat); }
+  beam(new V3(W.x - 7, 0, W.z), new V3(W.x, cy, W.z), 0.35, mat); beam(new V3(W.x + 7, 0, W.z), new V3(W.x, cy, W.z), 0.35, mat);
+  for (let k = 0; k < 64; k++) { const a = (k / 64) * Math.PI * 2; addLamp(W.x + Math.cos(a) * (R + 0.2), cy + Math.sin(a) * (R + 0.2), W.z + 0.4, 0.9, BULBS[k % 5], 1, k * 0.5); }
+  return rim;
+})();
+// Elliott Bay, then the Olympic Mountains with the sun going down behind them, and Mount Rainier off to one side
+const seattle = (() => {
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(4000, 1000), new THREE.MeshBasicMaterial({ color: 0x223, fog: false }));
+  water.rotation.x = -Math.PI / 2; water.position.set(0, 0.3, -910); scene.add(water);
+  const pos = [], idx = [], N = 160;
+  for (let i = 0; i <= N; i++) {
+    const x = -1700 + (i / N) * 3400, h = 18 + 34 * (0.5 + 0.5 * Math.sin(i * 0.11 + SEED)) * (0.6 + 0.4 * Math.sin(i * 0.043 + SEED * 3)) + 14 * Math.abs(Math.sin(i * 0.53 + SEED * 2)) + rand(0, 9);
+    pos.push(x, 0, -1180, x, h, -1180);
+    if (i < N) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   }
-  for (let k = 0; k < 40; k++) { const a = (k / 40) * Math.PI * 2; addLamp(P.x + Math.cos(a) * 12.6, 16.1, P.z + Math.sin(a) * 12.6, 0.8, DIYA, 0); }
-  for (let r = 0; r < 8; r++) { const a = (r / 8) * Math.PI * 2; for (let i = 1; i < 10; i++) { const t = (i / 10) * (Math.PI / 2); addLamp(P.x + Math.cos(a) * Math.cos(t) * 12.7, 16 + Math.sin(t) * 12.4 * 1.15, P.z + Math.sin(a) * Math.cos(t) * 12.7, 0.75, GOLD_BULB, 2, i); } }
-})();
-const clockFace = (() => { // clock tower
-  const P = new V3(rand(100, 130) * SIDE, 0, rand(-190, -165)), mat = new THREE.MeshLambertMaterial({ color: 0x8a5a44 });
-  const shaft = new THREE.Mesh(new THREE.BoxGeometry(8, 44, 8), mat); shaft.position.set(P.x, 22, P.z); city.add(shaft);
-  const top = new THREE.Mesh(new THREE.ConeGeometry(6.4, 9, 4), mat); top.rotation.y = Math.PI / 4; top.position.set(P.x, 48.5, P.z); city.add(top);
-  const face = new THREE.Mesh(new THREE.CircleGeometry(2.6, 24), new THREE.MeshBasicMaterial({ color: 0x302a20 })); face.position.set(P.x, 38, P.z + 4.05); city.add(face);
-  for (let q = -3.6; q <= 3.6; q += 0.9) addLamp(P.x + q, 44.2, P.z + 4.2, 0.7, DIYA, 0);
-  return face;
+  const og = new THREE.BufferGeometry(); og.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); og.setIndex(idx);
+  const olympics = new THREE.Mesh(og, new THREE.MeshBasicMaterial({ color: 0x333, fog: false, side: THREE.DoubleSide })); olympics.renderOrder = -5; scene.add(olympics);
+  const body = [[330, 0], [230, 62], [150, 112], [86, 156], [40, 186], [14, 202], [0, 205]].map(([r, y]) => new THREE.Vector2(r, y));
+  const snow = [[170, 100], [104, 146], [52, 180], [20, 199], [0, 206]].map(([r, y]) => new THREE.Vector2(r * 1.02, y));
+  const RX = SIDE * rand(300, 420), RZ = -1150; // opposite the downtown towers so it isn't hidden
+  const mBody = new THREE.Mesh(new THREE.LatheGeometry(body, 40), new THREE.MeshBasicMaterial({ color: 0x333, fog: false }));
+  const mSnow = new THREE.Mesh(new THREE.LatheGeometry(snow, 40), new THREE.MeshBasicMaterial({ color: 0xfff, fog: false }));
+  for (const m of [mBody, mSnow]) { m.position.set(RX, 0, RZ); m.scale.set(0.6, 0.66, 0.6); m.renderOrder = -6; scene.add(m); }
+  return {
+    update(n, z, h) { // tint everything from alpenglow to night
+      water.material.color.copy(h).lerp(z, 0.5).multiplyScalar(lerp(0.75, 0.6, n));
+      olympics.material.color.setRGB(lerp(0.36, 0.03, n), lerp(0.24, 0.03, n), lerp(0.42, 0.08, n));
+      mBody.material.color.setRGB(lerp(0.4, 0.04, n), lerp(0.3, 0.04, n), lerp(0.46, 0.09, n));
+      mSnow.material.color.setRGB(lerp(1.0, 0.15, n), lerp(0.74, 0.15, n), lerp(0.72, 0.24, n));
+    },
+  };
 })();
 const beacon = (() => { // telecom mast with a red light
-  const P = new V3(rand(-240, 240), 0, rand(-360, -300)), mat = new THREE.MeshLambertMaterial({ color: 0x3c3a44 });
+  const P = new V3((Math.random() < 0.5 ? -1 : 1) * rand(70, 240), 0, rand(-360, -300)), mat = new THREE.MeshLambertMaterial({ color: 0x3c3a44 }); // kept off to the side, never in front of the Needle
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 2.4, 120, 6), mat); mast.position.set(P.x, 60, P.z); city.add(mast);
   const b = new THREE.Mesh(new THREE.SphereGeometry(1.4, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2020 })); b.position.set(P.x, 121, P.z); city.add(b); return b;
 })();
@@ -1185,7 +1222,7 @@ const GENERAL_TIPS = [
   'Most of India\'s fireworks are made in one town: Sivakasi, in Tamil Nadu.',
   'Ayodhya lit more than 3 million lamps along its river on 7 November 2026.',
   'This is the first Diwali since UNESCO added it to its world heritage list.',
-  'Those black tanks on every roof hold water. Tonight they get lamps too.',
+  'The Space Needle is 605 feet tall. Tonight it is wearing lamps.',
 ];
 const ICONS = {
   rocket: '<path d="M18 44h12l-1-14 3-6v-4H16v4l3 6z" fill="#3f8a52" opacity=".7"/><rect x="22" y="6" width="4" height="16" rx="1.5" fill="#c81d25"/><path d="M22 6l2-4 2 4z" fill="#e0a526"/><path d="M24 22v20" stroke="#8a6a3a" stroke-width="1.4"/>',
@@ -1668,6 +1705,7 @@ function applyNight() {
   fillL.intensity = fillR.intensity = 0.38 * clamp(night.lit, 0, 1);
   stars.material.uniforms.uOp.value = smooth(0.55, 1, n);
   lampMat.uniforms.uLit.value = night.lit;
+  seattle.update(n, skyU.uZenith.value, skyU.uHorizon.value);
   for (const m of windowLamp) m.emissiveIntensity = night.win * 0.6;
 }
 
@@ -1759,7 +1797,6 @@ function frame() {
     L.mesh.rotation.z = Math.sin(time * 1.3 + L.phase) * 0.12; L.mesh.rotation.y = time * 0.4 + L.phase;
     const f = 0.25 + glow * (0.75 + Math.sin(time * 5 + L.phase * 3) * 0.06); L.mesh.material.color.setRGB(L.col[0] * f, L.col[1] * f, L.col[2] * f);
   }
-  clockFace.material.color.setRGB(lerp(0.19, 1, night.win), lerp(0.16, 0.92, night.win), lerp(0.12, 0.7, night.win));
   beacon.material.color.setRGB(0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.sin(time * 2.2), 3), 0.05, 0.05); // soft pulse, not a hard blink
   lampMat.uniforms.uTime.value = time; stars.material.uniforms.uTime.value = time;
   birds.update(dt);

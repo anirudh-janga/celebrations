@@ -12,9 +12,9 @@ Personas used below:
 
 ## Epic A: Intro shot, sunset to Diwali night
 
-**A1. Sunset over an Indian city**
-As a guest, I want the page to open on a wide shot of an Indian city skyline at sunset, so that I feel I am standing on a rooftop on Diwali evening.
-- Acceptance: the sky shows a warm orange-to-rose gradient with a low sun; the skyline has mixed silhouettes (apartment blocks, a temple shikhara, domes, water tanks, a clock tower); the camera drifts slowly.
+**A1. Sunset over Seattle**
+As a guest, I want the page to open on a wide shot of Seattle at sunset, so that I feel I am on a rooftop on Diwali evening.
+- Acceptance: the Space Needle at the end of the street, a downtown tower cluster, the Great Wheel on the waterfront, Elliott Bay, the Olympic Mountains with the sun setting behind them, and Mount Rainier; the camera drifts slowly.
 
 **A2. Sunset fades to night**
 As a guest, I want dusk to deepen into night over about 12 seconds, so that the moment the lights come on feels earned.
