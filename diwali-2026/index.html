@@ -1506,12 +1506,12 @@ function goStreet() {
   state = 'toStreet'; streetT = 0; streetFrom = { pos: camPos.clone(), look: camLook.clone() };
 }
 let streetFrom = null;
-function arriveStreet() { state = 'street'; $('#hud').hidden = false; $('#trayWrap').hidden = false; $('#startModal').hidden = false; $('#timer').hidden = true; $('#playBtn').focus({ preventScroll: true }); }
+function arriveStreet() { $('#hud').hidden = false; $('#trayWrap').hidden = false; startRound('free'); } // straight into play, no start screen
 function startRound(m) {
   mode = m; score = 0; lit = 0; counts = {}; recent = []; combo = 0; timeLeft = ROUND; finaleRunning = false;
   $('#startModal').hidden = true; $('#endModal').hidden = true; $('#timer').hidden = m !== 'timed'; $('#timer').classList.remove('low'); $('#timer').textContent = ROUND;
   setScoreUI(); state = 'play'; updateHint(); document.body.classList.add('playing');
-  toast('How to play', m === 'timed' ? 'Try different fireworks for bonus points. Fill the light meter before time runs out.' : 'No timer. Light whatever you like. Fill the meter for a grand finale.');
+  toast('How to play', m === 'timed' ? 'Try different fireworks for bonus points. Fill the light meter before time runs out.' : (hasTouch ? 'Pick a firework below, then tap the street to light it.' : 'Pick a firework below, then click the street to light it.'));
 }
 $('#playBtn').onclick = () => startRound('timed');
 $('#freeBtn').onclick = () => startRound('free');
