@@ -4,7 +4,7 @@ Interactive festival greetings to send to friends and family. Each festival gets
 
 | Festival | Page | Notes |
 | --- | --- | --- |
-| Diwali 2026 | [`diwali-2026/`](diwali-2026/index.html) | three.js sunset-to-night intro over an Indian city, 12 classic crackers to burst, a 60-second Roshni round, and a Diwali 2026 almanac with sources. User stories: [`docs/diwali-2026/USER_STORIES.md`](docs/diwali-2026/USER_STORIES.md). |
+| Diwali 2026 | [`diwali-2026/`](diwali-2026/index.html) | three.js sunset-to-night intro over an Indian city, a Telugu greeting, 12 classic crackers (tarajuvva, chichubuddi, bhoochakram, kakarapuvvottulu…) to burst, a 60-second Roshni round, and a Diwali 2026 almanac with sources. User stories: [`docs/diwali-2026/USER_STORIES.md`](docs/diwali-2026/USER_STORIES.md). |
 
 ## Devices
 
@@ -30,4 +30,6 @@ three.js r128 loads from cdnjs; fonts load from Google Fonts. Sound is synthesiz
 
 ## Publish with GitHub Pages
 
-Repository **Settings → Pages → Build and deployment**: set the source to "Deploy from a branch", pick the branch and `/ (root)`. The site will be at `https://<user>.github.io/celebrations/`.
+`.github/workflows/pages.yml` deploys on every push to `main` or the Diwali branch, and can be run by hand from the Actions tab. It publishes `index.html` plus every top-level folder that has an `index.html` (so new festival folders go live automatically), and leaves out `docs/`. In **Settings → Pages**, the source must be set to **GitHub Actions**.
+
+Live at `https://anirudh-janga.github.io/celebrations/`.

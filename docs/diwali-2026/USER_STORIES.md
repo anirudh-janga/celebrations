@@ -25,11 +25,11 @@ As a guest, I want thousands of diyas to light up across rooftops, balconies and
 - Acceptance: diyas light in a wave from the centre outward; each flame flickers on its own; windows warm up; akash kandils (paper lanterns) and string lights glow on buildings.
 
 **A4. The greeting**
-As a guest, I want a "Shubh Deepavali 2026" title to appear once the city is lit, so that I know what this page is for.
+As a guest, I want a Telugu "దీపావళి శుభాకాంక్షలు" (Deepavali Shubhakankshalu) title with "Happy Deepavali 2026" beneath it to appear once the city is lit, so that I know what this page is for.
 - Acceptance: the title appears after the diyas; the call to action ("Go down to the street") appears below it; the intro can be skipped at any time.
 
 **A5. Personal greeting from the host**
-As a host, I want to add my name to the link (for example `#from-Anirudh`), so that guests see "Anirudh wishes you a Shubh Deepavali".
+As a host, I want to add my name to the link (for example `#from-Anirudh`), so that guests see "Anirudh wishes you a happy Deepavali".
 - Acceptance: the name is read from the URL hash, hyphens become spaces, only letters/digits/hyphens are used, nothing is sent anywhere. Without a hash a general greeting shows.
 
 ---
@@ -42,7 +42,7 @@ As a guest, I want the camera to swoop from the rooftop view down to a lane line
 
 **B2. Pick a cracker from the box**
 As a player, I want a "cracker box" tray with at least 10 Indian firecrackers, each with a picture and name, so that I can choose what to burst.
-- Acceptance: tray scrolls sideways on a phone; each item shows an English name, a local name, and a one-line description; the selected item is clearly highlighted.
+- Acceptance: tray scrolls sideways on a phone; each item shows an English or Telugu name, its name in Telugu script, and a short description; the selected item is clearly highlighted.
 
 **B3. Place and light it**
 As a player, I want to tap a spot on the street to place the cracker and see its fuse sparkle before it goes off, so that it feels like lighting it with an agarbatti.
@@ -50,16 +50,16 @@ As a player, I want to tap a spot on the street to place the cracker and see its
 
 **B4. Each cracker behaves like the real thing**
 As a player, I want every cracker to have its own effect, so that each one triggers a different memory.
-- Rocket: launched from a glass bottle, whistles up, bursts into a peony.
-- Anar (flower pot): a tall golden fountain that crackles.
-- Chakri (ground spinner): spins on the ground throwing a ring of sparks.
-- Phuljhari (sparkler): I can drag my finger to write in the air with sparks.
-- Laxmi bomb / sutli bomb: flash, shockwave ring, screen shake and a big boom.
-- Ladi (1000-wala): a chain of rapid pops crackling down the street.
+- Tarajuvva (rocket): launched from a glass bottle, whistles up, bursts into a peony.
+- Chichubuddi (flower pot): a tall golden fountain that crackles.
+- Bhoochakram (ground spinner): spins on the ground throwing a ring of sparks.
+- Kakarapuvvottulu (sparkler): I can drag my finger to write in the air with sparks.
+- Lakshmi bomb / sutli bomb: flash, shockwave ring, screen shake and a big boom.
+- 1000-wala cracker string: a chain of rapid pops crackling down the street.
 - Sky shot (12-shot): a series of colourful shells, one after another.
 - Bhoochakra/pencil: thin coloured sparks that change colour.
-- Saanp goli (snake tablet): a black ash snake that grows and wriggles with smoke.
-- Rangeen machis (colour matches): little coloured flames.
+- Paamu billalu (snake tablets): a black ash snake that grows and wriggles with smoke.
+- Colour matches (rangula aggipullalu): little coloured flames.
 - Hydrogen bomb / aloo bomb: a heavier bang with smoke.
 - Acceptance: each effect is visibly different and lasts 1–6 seconds.
 

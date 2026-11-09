@@ -1,0 +1,49 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/diwali-celebration-page-game-7nnd2b
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; let an in-progress one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # Publish only the site: the hub page and each festival folder (not docs or workflow files).
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          for dir in */; do
+            dir="${dir%/}"
+            case "$dir" in docs|_site) continue ;; esac
+            if [ -f "$dir/index.html" ]; then cp -r "$dir" _site/; fi
+          done
+          touch _site/.nojekyll
+          find _site -type f | sort
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Shubh Deepavali 2026</title>
+<title>Deepavali Shubhakankshalu</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Watch an Indian city light up with diyas, then burst a box of classic Indian crackers on the street. A Diwali 2026 greeting.">
-<meta property="og:title" content="Shubh Deepavali 2026">
+<meta property="og:title" content="దీపావళి శుభాకాంక్షలు · Happy Deepavali 2026">
 <meta property="og:description" content="Sunset to Diwali night over an Indian city, then a box of rockets, anars, chakris and ladis for you to light.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Hind:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Ramaraja&family=Hind:wght@400;500;600;700&family=Hind+Guntur:wght@400;600&display=swap">
 <style>
 /* Layout: a full-bleed WebGL night scene; HTML sits on top as a thin HUD, a cracker tray, and a slide-in "almanac" drawer.
    Single committed look: Diwali night. Indigo sky, marigold and diya-gold light, kumkum red for emphasis. */
@@ -26,7 +26,8 @@
   --muted: #b8aed3;          /* secondary text, indigo-biased neutral */
   --line: rgba(255, 220, 143, 0.18);
   --font-display: "Rozha One", "Tiro Devanagari Hindi", Georgia, "Times New Roman", serif;
-  --font-body: "Hind", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-telugu: "Ramaraja", "Hind Guntur", "Noto Sans Telugu", "Kohinoor Telugu", serif;
+  --font-body: "Hind", "Hind Guntur", "Noto Sans Telugu", "Kohinoor Telugu", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -78,7 +79,7 @@ button { cursor: pointer; }
 
 #titleCard { top: 50%; bottom: auto; transform: translate(-50%, -50%); background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 #titleCard.fade-out { transform: translate(-50%, -46%); }
-#titleCard .deva { font-family: var(--font-display); font-size: clamp(56px, 14vw, 120px); line-height: 1; color: var(--diya);
+#titleCard .deva { font-family: var(--font-telugu); font-size: clamp(38px, 9.5vw, 104px); line-height: 1.25; text-wrap: balance; color: var(--diya);
   text-shadow: 0 0 24px rgba(255, 182, 39, .55), 0 0 64px rgba(232, 52, 90, .35); margin: 0; }
 #titleCard .latin { font-family: var(--font-display); font-size: clamp(24px, 5.4vw, 40px); letter-spacing: .02em; margin: 0; }
 #titleCard .latin span { color: var(--marigold); }
@@ -125,13 +126,13 @@ body.kb .cracker kbd { display: block; }
 .cracker.nudge { animation: nudge .35s ease; }
 @keyframes nudge { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .cracker {
-  position: relative; flex: 0 0 auto; width: 92px; scroll-snap-align: center; border-radius: 16px; padding: 8px 6px 8px;
+  position: relative; flex: 0 0 auto; width: 98px; scroll-snap-align: center; border-radius: 16px; padding: 8px 6px 8px;
   border: 1px solid var(--line); background: var(--panel-glass); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   display: grid; justify-items: center; gap: 2px; text-align: center; overflow: hidden; transition: transform .15s, border-color .15s, background .15s;
 }
 .cracker:hover { transform: translateY(-2px); }
 .cracker svg { width: 44px; height: 44px; }
-.cracker .nm { font-size: 13px; font-weight: 600; line-height: 1.15; }
+.cracker .nm { font-size: 13px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
 .cracker .lc { font-size: 11px; color: var(--muted); line-height: 1.2; min-height: 2.4em; }
 .cracker[aria-pressed="true"] { border-color: var(--marigold); background: rgba(70, 40, 10, .78); box-shadow: 0 0 0 1px var(--marigold), 0 0 22px -4px var(--marigold); }
 .cracker .cd { position: absolute; inset: auto 0 0 0; height: calc(var(--cd, 0) * 100%); background: rgba(11, 10, 31, .72); pointer-events: none; }
@@ -203,25 +204,25 @@ body.kb .cracker kbd { display: block; }
   .pill-btn .long { display: none; }
   .timer { font-size: 22px; }
   #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 138px); font-size: 13px; }
-  .cracker { width: 84px; }
+  .cracker { width: 92px; } .cracker .nm { font-size: 12.5px; }
 }
 /* tablets and desktops: roomier tray */
 @media (min-width: 900px) and (min-height: 640px) {
-  .cracker { width: 100px; } .cracker svg { width: 48px; height: 48px; } .cracker .nm { font-size: 14px; }
-  #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 160px); }
+  .cracker { width: 108px; } .cracker svg { width: 48px; height: 48px; } .cracker .nm { font-size: 13.5px; }
+  #toast { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 186px); }
 }
 /* phones held sideways: short screens need a compact tray and cards that fit */
 @media (max-height: 500px) {
   #trayWrap { gap: 2px; padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
-  .cracker { width: 70px; padding: 5px 4px; border-radius: 12px; } .cracker svg { width: 28px; height: 28px; }
-  .cracker .lc { display: none; } .cracker .nm { font-size: 11.5px; }
+  .cracker { width: 78px; padding: 5px 4px; border-radius: 12px; } .cracker svg { width: 28px; height: 28px; }
+  .cracker .lc { display: none; } .cracker .nm { font-size: 11px; }
   #hint { font-size: 12px; }
   #hud { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
   .icon-btn { width: 36px; height: 36px; } .pill-btn { height: 36px; } .timer { font-size: 20px; }
   #toast { bottom: auto; top: calc(max(8px, env(safe-area-inset-top, 0px)) + 50px); width: min(440px, calc(100% - 32px)); padding: 8px 12px; font-size: 13px; }
   .center-card { gap: 8px; padding: 14px 18px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
   .center-card h2 { font-size: 24px; }
-  #titleCard .deva { font-size: min(13vw, 19vh); } #titleCard .latin { font-size: 22px; } #titleCard p { font-size: 15px; }
+  #titleCard .deva { font-size: min(8vw, 13vh); } #titleCard .latin { font-size: 22px; } #titleCard p { font-size: 15px; }
   .modal-card { padding: 16px 18px; gap: 10px; } .modal-card h2 { font-size: 24px; } .steps { gap: 4px; } .steps li { font-size: 14px; }
   .stat b { font-size: 20px; }
   .btn { padding: 9px 16px; font-size: 15px; }
@@ -251,8 +252,8 @@ body.kb .cracker kbd { display: block; }
 <!-- Intro: once the lamps are lit -->
 <div class="center-card" id="titleCard" hidden>
   <div class="reveal" style="display:grid;gap:10px;justify-items:center">
-    <p class="deva" lang="hi">शुभ दीपावली</p>
-    <p class="latin">Shubh Deepavali <span>2026</span></p>
+    <p class="deva" lang="te">దీపావళి శుభాకాంక్షలు</p>
+    <p class="latin">Happy Deepavali <span>2026</span></p>
     <p id="greetLine">Wishing you and your family a year full of light.</p>
     <div class="row">
       <button class="btn" id="streetBtn" type="button">Go down to the street</button>
@@ -294,7 +295,7 @@ body.kb .cracker kbd { display: block; }
     <h2>Light up the street</h2>
     <ol class="steps">
       <li><span class="n">1</span><span>Pick a cracker from the box at the bottom.</span></li>
-      <li><span class="n">2</span><span id="step2">Tap anywhere on the street to light it. With the phuljhari, drag to write in the air. Use two fingers to light two at once.</span></li>
+      <li><span class="n">2</span><span id="step2">Tap anywhere on the street to light it. With the kakarapuvvottulu, drag to write in the air. Use two fingers to light two at once.</span></li>
       <li><span class="n">3</span><span>Mix it up for a variety bonus. Fill the Roshni meter in 60 seconds to set off the grand finale.</span></li>
     </ol>
     <div class="row">
@@ -340,10 +341,10 @@ body.kb .cracker kbd { display: block; }
     <h3>The five days</h3>
     <ol class="days" id="days">
       <li class="day" data-date="2026-11-06"><div class="date"><b>6</b><span>Fri</span></div><div class="what"><strong>Dhanteras</strong><small>New gold, silver and steel utensils come home for luck.</small></div></li>
-      <li class="day" data-date="2026-11-07"><div class="date"><b>7</b><span>Sat</span></div><div class="what"><strong>Naraka Chaturdashi · Choti Diwali</strong><small>Early oil bath in the south. Ayodhya's Deepotsav on the Saryu ghats.</small></div></li>
-      <li class="day" data-date="2026-11-08"><div class="date"><b>8</b><span>Sun</span></div><div class="what"><strong>Lakshmi Puja · Diwali</strong><small>Evening puja, diyas at every door. Kali Puja in Bengal, Bandi Chhor Divas for Sikhs.</small></div></li>
+      <li class="day" data-date="2026-11-07"><div class="date"><b>7</b><span>Sat</span></div><div class="what"><strong>Naraka Chaturdashi</strong><small>The big day in Telugu homes: an early oil bath and crackers before dawn, for Satyabhama's victory over Narakasura. Ayodhya's Deepotsav that evening.</small></div></li>
+      <li class="day" data-date="2026-11-08"><div class="date"><b>8</b><span>Sun</span></div><div class="what"><strong>Deepavali Amavasya · Lakshmi Puja</strong><small>Evening puja, diyas at every door. Kali Puja in Bengal, Bandi Chhor Divas for Sikhs.</small></div></li>
       <li class="day" data-date="2026-11-10"><div class="date"><b>10</b><span>Tue</span></div><div class="what"><strong>Govardhan Puja · Annakut · Bali Padyami</strong><small>A mountain of food offered to Krishna.</small></div></li>
-      <li class="day" data-date="2026-11-11"><div class="date"><b>11</b><span>Wed</span></div><div class="what"><strong>Bhai Dooj · Bhau Beej</strong><small>Sisters put tilak on their brothers. Brothers bring the gifts.</small></div></li>
+      <li class="day" data-date="2026-11-11"><div class="date"><b>11</b><span>Wed</span></div><div class="what"><strong>Bhagini Hasta Bhojanam · Bhai Dooj</strong><small>Brothers eat a meal cooked by their sisters, and bring the gifts.</small></div></li>
     </ol>
     <p class="note">Amavasya ran into the morning of 9 November, so most panchangs moved Govardhan Puja and Bhai Dooj by a day. Some calendars list them on 9 and 10 November. Check your family's panchang.</p>
   </section>
@@ -410,7 +411,7 @@ body.kb .cracker kbd { display: block; }
       <button class="btn small" id="copyBtn" type="button">Copy link</button>
     </div>
     <div id="shareLink"></div>
-    <p class="note" id="copyNote">The link opens with “<span id="shareName">your name</span> wishes you a Shubh Deepavali”.</p>
+    <p class="note" id="copyNote">The link opens with “<span id="shareName">your name</span> wishes you a happy Deepavali”.</p>
   </section>
 
   <section>
@@ -1100,35 +1101,36 @@ function fuse(p, dur, done) {
 
 /* ================= the crackers ================= */
 const CRACKERS = [
-  { id: 'rocket', name: 'Rocket', local: 'रॉकेट · in a bottle', pts: 60, cd: 0.7,
-    tips: ['The empty glass bottle was the launch pad. Somebody always had to go and find one.', 'Half the fun of a rocket was guessing whose terrace it would land on.', 'A rocket that zoomed off sideways got a bigger cheer than one that went straight up.'] },
-  { id: 'anar', name: 'Anar', local: 'अनार · flower pot', pts: 50, cd: 1.0,
-    tips: ['Anar means pomegranate. The sparks spill out like its seeds.', 'The best anars reached the first-floor balcony. Everyone kept score.', 'Line up five anars and light them together. That was a "garden".'] },
-  { id: 'chakri', name: 'Chakri', local: 'चकरी · ground spinner', pts: 50, cd: 1.0,
-    tips: ['Every chakri chased the one kid who was most scared of it.', 'A dud chakri would sit there, then start spinning the moment someone went to check.', 'In the south it is the bhoo chakram, the earth wheel.'] },
-  { id: 'phuljhari', name: 'Phuljhari', local: 'फुलझड़ी · sparkler', pts: 45, cd: 6,
-    tips: ['Phuljhari means a shower of flowers. Drag to write your name in the air.', 'The hot wire went into a bucket of water, and that hiss was part of the ritual.', 'The one cracker that both Nani and the toddler agreed on.'] },
-  { id: 'laxmi', name: 'Laxmi Bomb', local: 'सुतली बम · sutli bomb', pts: 70, cd: 2.2,
-    tips: ['The tight jute twine on a sutli bomb is what makes the bang so loud.', 'The bravest cousin lit it with an agarbatti at arm\'s length. Everyone else counted with fingers in their ears.', 'If it didn\'t go off, nobody went near it for five whole minutes. Good rule.'] },
-  { id: 'ladi', name: '1000-wala', local: 'लड़ी · ladi', pts: 100, cd: 4.5,
-    tips: ['Ladis come out for weddings, cricket wins and, of course, Diwali night.', 'Delhi-NCR kept ladis banned even on Diwali this year. This one is pure pixels.', 'Some kids unrolled a ladi to save singles for tomorrow. Tomorrow they were always damp.'] },
-  { id: 'skyshot', name: '12-Shot', local: 'sky shot box', pts: 130, cd: 6.5,
+  { id: 'rocket', name: 'Tarajuvva', local: 'తారాజువ్వ · rocket in a bottle', pts: 60, cd: 0.7,
+    tips: ['The empty glass bottle was the launch pad. Somebody always had to go and find one.', 'Half the fun of a rocket was guessing whose terrace it would land on.', 'A tarajuvva that zoomed off sideways got a bigger cheer than one that went straight up.'] },
+  { id: 'anar', name: 'Chichubuddi', local: 'చిచ్చుబుడ్డి · flower pot', pts: 50, cd: 1.0,
+    tips: ['Elsewhere in India it is the anar, the pomegranate. The sparks spill out like its seeds.', 'The best chichubuddis reached the first-floor balcony. Everyone kept score.', 'Line up five chichubuddis and light them together. That was a "garden".'] },
+  { id: 'chakri', name: 'Bhoochakram', local: 'భూచక్రం · ground spinner', pts: 50, cd: 1.0,
+    tips: ['Every bhoochakram chased the one kid who was most scared of it.', 'A dud bhoochakram would sit there, then start spinning the moment someone went to check.', 'Bhoochakram means the earth wheel. Its cousin on a nail, the vishnu chakram, spun on the wall.'] },
+  { id: 'phuljhari', name: 'Kakara Puvvottulu', local: 'కాకరపువ్వొత్తులు · sparkler', pts: 45, cd: 6,
+    tips: ['Kakarapuvvottulu! Drag to write your name in the air.', 'The hot wire went into a bucket of water, and that hiss was part of the ritual.', 'The one cracker that both Nani and the toddler agreed on.'] },
+  { id: 'laxmi', name: 'Lakshmi Bomb', local: 'లక్ష్మీ బాంబు · sutli bomb', pts: 70, cd: 2.2,
+    tips: ['The tight jute twine on a Lakshmi bomb is what makes the bang so loud.', 'The bravest cousin lit it with an agarbatti at arm\'s length. Everyone else counted with fingers in their ears.', 'If it didn\'t go off, nobody went near it for five whole minutes. Good rule.'] },
+  { id: 'ladi', name: '1000-wala', local: 'టపాకాయల దండ · cracker string', pts: 100, cd: 4.5,
+    tips: ['Cracker strings come out for weddings, cricket wins and, of course, Deepavali night.', 'Delhi-NCR kept cracker strings banned even on Diwali this year. This one is pure pixels.', 'Some kids unrolled a string to save singles for tomorrow. Tomorrow they were always damp.'] },
+  { id: 'skyshot', name: '12-Shot', local: 'స్కై షాట్ · sky shot box', pts: 130, cd: 6.5,
     tips: ['Count the shots out loud. Every family loses track at seven.', 'Sky shots quietly retired the rocket-in-a-bottle on most terraces.', 'Watch the whole street look up at once. That\'s the best part.'] },
-  { id: 'hydrogen', name: 'Hydrogen Bomb', local: 'the big green one', pts: 90, cd: 3.5,
+  { id: 'hydrogen', name: 'Hydrogen Bomb', local: 'హైడ్రోజన్ బాంబు · the big green one', pts: 90, cd: 3.5,
     tips: ['The big green one. You lit it, and the whole street went quiet waiting.', 'If it set off a car alarm down the lane, it was a good one.', 'There was always one uncle who saved the biggest bomb for midnight.'] },
-  { id: 'pencil', name: 'Colour Pencil', local: 'पेंसिल', pts: 35, cd: 0.9,
+  { id: 'pencil', name: 'Colour Pencil', local: 'రంగుల పెన్సిల్', pts: 35, cd: 0.9,
     tips: ['Colour-changing pencils were the first "premium" cracker most of us bought with pocket money.', 'Red, then green, then gold. Everyone shouted the colours like it was a quiz.'] },
-  { id: 'machis', name: 'Rangeen Machis', local: 'रंगीन माचिस · colour matches', pts: 30, cd: 0.9,
+  { id: 'machis', name: 'Colour Matches', local: 'రంగుల అగ్గిపుల్లలు', pts: 30, cd: 0.9,
     tips: ['Colour matches burn red, green and purple because of metal salts, the same chemistry as every firework.', 'Grown-ups used them to light diyas. Kids used them to annoy everyone.'] },
-  { id: 'snake', name: 'Saanp Goli', local: 'साँप की गोली · snake tablet', pts: 30, cd: 0.9,
-    tips: ['Light a tiny black pill and a snake of ash crawls out. Actual magic at age six.', 'It leaves a black mark on the floor that lasts till Holi.', 'In Tamil Nadu it is the paambu maathirai, the snake tablet.'] },
-  { id: 'tikli', name: 'Tikli', local: 'टिकली · roll caps', pts: 25, cd: 0.6,
-    tips: ['A roll of tikli in a toy pistol: the cheapest, longest-lasting Diwali of all.', 'Out of pistols? You hit the caps with a stone on the floor. Same thrill.'] },
+  { id: 'snake', name: 'Paamu Billalu', local: 'పాము బిళ్ళలు · snake tablets', pts: 30, cd: 0.9,
+    tips: ['Light a tiny black pill and a snake of ash crawls out. Actual magic at age six.', 'It leaves a black mark on the floor that lasts till Sankranti.', 'Paamu billa: a snake tablet. Nobody ever lit just one.'] },
+  { id: 'tikli', name: 'Toy Gun Caps', local: 'బొమ్మ తుపాకీ · roll caps', pts: 25, cd: 0.6,
+    tips: ['A roll of caps in a toy gun: the cheapest, longest-lasting Deepavali of all.', 'Out of pistols? You hit the caps with a stone on the floor. Same thrill.'] },
 ];
 const GENERAL_TIPS = [
   'Diwali falls on Amavasya, the new moon. There is no moon tonight, so every lamp counts.',
   'Deepavali comes from Sanskrit: deepa, a lamp, and avali, a row. A row of lamps.',
   'Sivakasi in Tamil Nadu makes most of India\'s firecrackers.',
+  'In Telugu homes Naraka Chaturdashi is the big day: Satyabhama defeats Narakasura, and the crackers start before sunrise.',
   'Ayodhya lit more than 30 lakh diyas on the Saryu ghats on 7 November 2026.',
   'This is the first Diwali since UNESCO added Deepavali to its heritage list in December 2025.',
   'Those black tanks on every roof are water tanks. Tonight they wear diyas too.',
@@ -1302,7 +1304,7 @@ const sparkler = (() => {
   }
   return {
     get active() { return active; },
-    start(screen) { active = true; t = 0; drawing = true; vibrate(8); toWorld(screen.x, screen.y, cur); last.copy(cur); hasLast = true; sfx.hiss(D, 0.1, 6500); sfx.crackle(D, 40, 0.08); showHint('Drag to write in the air with your phuljhari'); },
+    start(screen) { active = true; t = 0; drawing = true; vibrate(8); toWorld(screen.x, screen.y, cur); last.copy(cur); hasLast = true; sfx.hiss(D, 0.1, 6500); sfx.crackle(D, 40, 0.08); showHint('Drag to write in the air with your kakarapuvvottu'); },
     move(sx, sy) { if (!active) return; toWorld(sx, sy, cur); drawing = true; },
     up() { drawing = false; },
     update(dt) {
@@ -1360,10 +1362,10 @@ CRACKERS.forEach((c) => {
 });
 function select(id) { selected = id; tray.querySelectorAll('.cracker').forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id ? 'true' : 'false')); updateHint(); }
 const VERB = hasTouch ? 'Tap' : 'Click';
-if (!hasTouch) $('#step2').textContent = 'Click the street to light it, or press Space to light it at the cursor. With the phuljhari, hold and drag to write in the air.';
+if (!hasTouch) $('#step2').textContent = 'Click the street to light it, or press Space to light it at the cursor. With the kakarapuvvottulu, hold and drag to write in the air.';
 function updateHint() {
   const c = byId[selected];
-  $('#hint').textContent = c.id === 'phuljhari' ? `${VERB} anywhere to light the phuljhari, then drag to write` : `${VERB} the street to light the ${c.name}${hasTouch ? '' : ' · keys 1–9, 0, −, = switch · Space lights'}`;
+  $('#hint').textContent = c.id === 'phuljhari' ? `${VERB} anywhere to light the kakarapuvvottu, then drag to write` : `${VERB} the street to light the ${c.name}${hasTouch ? '' : ' · keys 1–9, 0, −, = switch · Space lights'}`;
 }
 function showHint(t) { $('#hint').textContent = t; }
 
@@ -1414,7 +1416,7 @@ $('#copyBtn').onclick = () => {
   const n = cleanName($('#nameInput').value), url = shareURL(n);
   if (framed) { // inside a viewer frame we can't see the public URL; put the name in the hash, which the viewer's link follows
     try { location.hash = n ? 'from-' + n.replace(/ /g, '-') : ''; } catch (e) {}
-    $('#copyNote').textContent = n ? `Done. Copy this page's link from the address bar or the Share button, and it will open with "${n} wishes you a Shubh Deepavali".` : 'Type your name first.';
+    $('#copyNote').textContent = n ? `Done. Copy this page's link from the address bar or the Share button, and it will open with "${n} wishes you a happy Deepavali".` : 'Type your name first.';
     return;
   }
   if (n) { try { history.replaceState(null, '', '#from-' + n.replace(/ /g, '-')); } catch (e) {} }
@@ -1474,7 +1476,7 @@ function endRound(success) {
 
 function grandFinale(after_) {
   finaleRunning = true; sfx.chord();
-  toast('Grand finale', hostName ? `${hostName} and the whole lane say Shubh Deepavali!` : 'The whole lane joins in. Shubh Deepavali!');
+  toast('Grand finale', hostName ? `${hostName} and the whole lane say Deepavali Shubhakankshalu!` : 'The whole lane joins in. Deepavali Shubhakankshalu!');
   const N = Math.round(50 * Q.fx);
   for (let i = 0; i < N; i++) after(i * 0.16 + rand(0, 0.1), () => {
     const from = new V3(rand(-16, 16), 0.5, rand(-48, -30));
